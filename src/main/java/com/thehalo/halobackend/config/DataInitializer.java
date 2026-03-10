@@ -11,10 +11,16 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-import java.util.Optional;
-
 /**
- * Initialize default admin user if not exists
+ * DataInitializer — runs on every startup.
+ *
+ * Strategy:
+ *  - Roles:            idempotent — create only if missing
+ *  - IAM Admin:        create only on first boot, never overwrite
+ *  - Policy Admin:     create only on first boot, never overwrite
+ *
+ * ALL passwords are encoded via Spring's PasswordEncoder at runtime.
+ * No raw BCrypt strings in SQL — this is the ONLY source of truth for passwords.
  */
 @Component
 @RequiredArgsConstructor
@@ -23,52 +29,63 @@ public class DataInitializer implements CommandLineRunner {
 
     private final AppUserRepository userRepository;
     private final AppRoleRepository roleRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final PasswordEncoder   passwordEncoder;
+
+    // ─── Seed credentials (change before prod, store in Vault/Env) ─────────
+    private static final String DEFAULT_PASSWORD    = "admin123";
+
+    private static final String IAM_ADMIN_EMAIL     = "iamadmin@thehalo.com";
+    private static final String POLICY_ADMIN_EMAIL  = "policy@thehalo.com";
 
     @Override
-    public void run(String... args) throws Exception {
+    public void run(String... args) {
         initializeRoles();
-        initializeAdminUser();
+        seedUser(IAM_ADMIN_EMAIL,    "IAM Administrator", "IAM",   "Administrator", RoleName.IAM_ADMIN);
+        seedUser(POLICY_ADMIN_EMAIL, "Priya Sharma",      "Priya", "Sharma",        RoleName.POLICY_ADMIN);
     }
 
+    // ─── Private helpers ────────────────────────────────────────────────────
+
+    /**
+     * Ensure every role enum value exists in DB. Safe across restarts.
+     */
     private void initializeRoles() {
         for (RoleName roleName : RoleName.values()) {
             if (roleRepository.findByName(roleName).isEmpty()) {
                 AppRole role = new AppRole();
                 role.setName(roleName);
                 roleRepository.save(role);
-                log.info("Created role: {}", roleName);
+                log.info("DataInitializer: Created missing role → {}", roleName);
             }
         }
     }
 
-    private void initializeAdminUser() {
-        String adminEmail = "iamadmin@thehalo.com";
-        String adminPassword = "admin123";
-        
-        Optional<AppUser> existingUser = userRepository.findByEmail(adminEmail);
-        
-        if (existingUser.isEmpty()) {
-            AppRole iamAdminRole = roleRepository.findByName(RoleName.IAM_ADMIN)
-                .orElseThrow(() -> new RuntimeException("IAM_ADMIN role not found"));
+    /**
+     * Idempotent user seed — ONLY creates the user on first boot.
+     * If the email already exists, skips silently.
+     * Password is always hashed via PasswordEncoder — never stored plain.
+     */
+    private void seedUser(String email, String fullName, String firstName,
+                          String lastName, RoleName roleName) {
+        if (userRepository.findByEmail(email).isPresent()) {
+            log.info("DataInitializer: {} already exists — skipping", email);
+            return;
+        }
 
-            AppUser adminUser = AppUser.builder()
-                .email(adminEmail)
-                .fullName("IAM Administrator")
-                .firstName("IAM")
-                .lastName("Administrator")
-                .password(passwordEncoder.encode(adminPassword))
-                .role(iamAdminRole)
+        AppRole role = roleRepository.findByName(roleName)
+                .orElseThrow(() -> new RuntimeException(
+                        "Role not found after init: " + roleName));
+
+        AppUser user = AppUser.builder()
+                .email(email)
+                .fullName(fullName)
+                .firstName(firstName)
+                .lastName(lastName)
+                .password(passwordEncoder.encode(DEFAULT_PASSWORD))
+                .role(role)
                 .build();
 
-            userRepository.save(adminUser);
-            log.info("Created default IAM admin user: {}", adminEmail);
-        } else {
-            // Update password to ensure it's correct
-            AppUser user = existingUser.get();
-            user.setPassword(passwordEncoder.encode(adminPassword));
-            userRepository.save(user);
-            log.info("Updated IAM admin user password: {}", adminEmail);
-        }
+        userRepository.save(user);
+        log.info("DataInitializer: Created {} [{}]", email, roleName);
     }
 }

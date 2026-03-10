@@ -7,5 +7,7 @@ public enum PlatformName {
     LINKEDIN,
     FACEBOOK,
     SNAPCHAT,
+    TIKTOK,
+    PODCAST,
     OTHERS
 }

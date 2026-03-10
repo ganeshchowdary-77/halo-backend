@@ -39,7 +39,7 @@ public class Product extends BaseEntity {
     @Column(nullable = false)
     private Boolean coveredLegal;
 
-    @Column(nullable = false)
+    @Column(name = "covered_pr", nullable = false)
     private Boolean coveredPR;
 
     @Column(nullable = false)
@@ -49,7 +49,7 @@ public class Product extends BaseEntity {
     @Column(precision = 19, scale = 2)
     private BigDecimal coverageLimitLegal;
 
-    @Column(precision = 19, scale = 2)
+    @Column(name = "coverage_limit_pr", precision = 19, scale = 2)
     private BigDecimal coverageLimitPR;
 
     @Column(precision = 19, scale = 2)

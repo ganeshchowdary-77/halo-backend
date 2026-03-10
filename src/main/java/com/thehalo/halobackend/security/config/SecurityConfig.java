@@ -5,6 +5,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
+import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -15,12 +17,16 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import java.util.Arrays;
 
 @Configuration
 @EnableMethodSecurity
 @EnableConfigurationProperties(JwtProperties.class)
 @RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final Environment environment;
 
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;
     private final JwtAccessDeniedHandler accessDeniedHandler;
@@ -44,20 +50,31 @@ public class SecurityConfig {
                 )
 
                 // Authorization rules
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/auth/**").permitAll()
+                .authorizeHttpRequests(auth -> {
+                        auth.requestMatchers("/api/v1/auth/**").permitAll();
+                        
+                        // Public Endpoints
+                        auth.requestMatchers("/api/v1/products/public").permitAll();
 
-                        // Allow all OpenAPI & Swagger
-                        .requestMatchers("/v3/**").permitAll()
-                        .requestMatchers("/swagger-ui/**").permitAll()
-                        .requestMatchers("/h2-console/**").permitAll()
+                        // OpenAPI / Swagger — always public
+                        auth.requestMatchers("/v3/**", "/swagger-ui/**", "/swagger-ui.html").permitAll();
 
-                        .anyRequest().authenticated()
-                )
+                        // H2 Console — only expose in dev profile
+                        boolean isDev = Arrays.asList(environment.getActiveProfiles()).contains("dev")
+                                || Arrays.asList(environment.getDefaultProfiles()).contains("default");
+                        if (isDev) {
+                            auth.requestMatchers("/h2-console/**").permitAll();
+                        }
 
-                // Allow H2 console frames (dev only usage)
-                .headers(headers ->
-                        headers.frameOptions(frame -> frame.disable())
+                        auth.anyRequest().authenticated();
+                })
+
+                // Security headers
+                .headers(headers -> headers
+                        // Allow H2 console iframes only from same origin (dev)
+                        .frameOptions(frame -> frame.sameOrigin())
+                        .contentTypeOptions(ct -> {})
+                        .referrerPolicy(rp -> rp.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
                 )
 
                 // Add JWT filter
