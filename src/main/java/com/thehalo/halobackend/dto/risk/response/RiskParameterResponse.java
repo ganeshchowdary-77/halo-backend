@@ -13,9 +13,9 @@ public class RiskParameterResponse {
     private String label;
     private BigDecimal multiplier;
     private String description;
-    private Niche applicableNiche;
     private String updateNote;
     private String updatedByUserName;
     private LocalDateTime updatedAt;
     private Boolean active;
+
 }

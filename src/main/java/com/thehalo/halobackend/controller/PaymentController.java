@@ -1,6 +1,6 @@
 package com.thehalo.halobackend.controller;
 
-import com.thehalo.halobackend.dto.common.ApiResponse;
+import com.thehalo.halobackend.dto.common.HaloApiResponse;
 import com.thehalo.halobackend.dto.common.ResponseFactory;
 import com.thehalo.halobackend.dto.payment.request.AddPaymentMethodRequest;
 import com.thehalo.halobackend.dto.payment.request.ProcessPaymentRequest;
@@ -28,20 +28,20 @@ public class PaymentController {
 
     @PostMapping("/methods")
     @PreAuthorize("hasRole('INFLUENCER')")
-    public ResponseEntity<ApiResponse<PaymentMethodResponse>> addPaymentMethod(
+    public ResponseEntity<HaloApiResponse<PaymentMethodResponse>> addPaymentMethod(
             @Valid @RequestBody AddPaymentMethodRequest request) {
         return ResponseFactory.success(paymentService.addPaymentMethod(request), "Payment method saved");
     }
 
     @GetMapping("/methods")
     @PreAuthorize("hasRole('INFLUENCER')")
-    public ResponseEntity<ApiResponse<List<PaymentMethodResponse>>> getMyPaymentMethods() {
+    public ResponseEntity<HaloApiResponse<List<PaymentMethodResponse>>> getMyPaymentMethods() {
         return ResponseFactory.success(paymentService.getMyPaymentMethods(), "Retrieved payment methods");
     }
 
     @DeleteMapping("/methods/{id}")
     @PreAuthorize("hasRole('INFLUENCER')")
-    public ResponseEntity<ApiResponse<Void>> deletePaymentMethod(@PathVariable Long id) {
+    public ResponseEntity<HaloApiResponse<Void>> deletePaymentMethod(@PathVariable Long id) {
         paymentService.deletePaymentMethod(id);
         return ResponseFactory.success(null, "Payment method deleted");
     }
@@ -50,13 +50,13 @@ public class PaymentController {
 
     @GetMapping("/policies/{policyId}/summary")
     @PreAuthorize("hasRole('INFLUENCER')")
-    public ResponseEntity<ApiResponse<PaymentSummaryResponse>> getPaymentSummary(@PathVariable Long policyId) {
+    public ResponseEntity<HaloApiResponse<PaymentSummaryResponse>> getPaymentSummary(@PathVariable Long policyId) {
         return ResponseFactory.success(paymentService.getPaymentSummary(policyId), "Payment summary retrieved");
     }
 
     @PostMapping("/policies/{policyId}/charge")
     @PreAuthorize("hasRole('INFLUENCER')")
-    public ResponseEntity<ApiResponse<TransactionResponse>> processPremiumPayment(
+    public ResponseEntity<HaloApiResponse<TransactionResponse>> processPremiumPayment(
             @PathVariable Long policyId,
             @Valid @RequestBody ProcessPaymentRequest request) {
         return ResponseFactory.success(paymentService.processPremiumPayment(policyId, request),
@@ -65,13 +65,13 @@ public class PaymentController {
 
     @GetMapping("/ledger")
     @PreAuthorize("hasRole('INFLUENCER')")
-    public ResponseEntity<ApiResponse<List<TransactionResponse>>> getMyTransactionHistory() {
+    public ResponseEntity<HaloApiResponse<List<TransactionResponse>>> getMyTransactionHistory() {
         return ResponseFactory.success(paymentService.getMyTransactionHistory(), "Ledger history retrieved");
     }
 
     @GetMapping("/policies/{policyId}/ledger")
     @PreAuthorize("hasRole('INFLUENCER')")
-    public ResponseEntity<ApiResponse<List<TransactionResponse>>> getPolicyTransactionHistory(
+    public ResponseEntity<HaloApiResponse<List<TransactionResponse>>> getPolicyTransactionHistory(
             @PathVariable Long policyId) {
         return ResponseFactory.success(paymentService.getPolicyTransactionHistory(policyId), "Policy ledger retrieved");
     }
@@ -80,13 +80,13 @@ public class PaymentController {
 
     @GetMapping("/policies/{policyId}/surrender-quote")
     @PreAuthorize("hasRole('INFLUENCER')")
-    public ResponseEntity<ApiResponse<SurrenderQuoteResponse>> getSurrenderQuote(@PathVariable Long policyId) {
+    public ResponseEntity<HaloApiResponse<SurrenderQuoteResponse>> getSurrenderQuote(@PathVariable Long policyId) {
         return ResponseFactory.success(paymentService.getSurrenderQuote(policyId), "Surrender quote generated");
     }
 
     @PostMapping("/policies/{policyId}/surrender")
     @PreAuthorize("hasRole('INFLUENCER')")
-    public ResponseEntity<ApiResponse<TransactionResponse>> processSurrender(@PathVariable Long policyId) {
+    public ResponseEntity<HaloApiResponse<TransactionResponse>> processSurrender(@PathVariable Long policyId) {
         return ResponseFactory.success(paymentService.processSurrender(policyId),
                 "Policy surrendered and payout issued");
     }

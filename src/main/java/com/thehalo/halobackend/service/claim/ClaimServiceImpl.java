@@ -4,18 +4,20 @@ import com.thehalo.halobackend.dto.claim.request.FileClaimRequest;
 import com.thehalo.halobackend.dto.claim.request.ReviewClaimRequest;
 import com.thehalo.halobackend.dto.claim.response.*;
 import com.thehalo.halobackend.enums.ClaimStatus;
+import com.thehalo.halobackend.exception.business.BusinessRuleViolationException;
 import com.thehalo.halobackend.exception.domain.claim.*;
 import com.thehalo.halobackend.exception.domain.policy.PolicyNotActiveException;
+import com.thehalo.halobackend.exception.domain.policy.PolicyNotFoundException;
+import com.thehalo.halobackend.exception.domain.policy.UnauthorizedPolicyAccessException;
 import com.thehalo.halobackend.mapper.claim.ClaimMapper;
 import com.thehalo.halobackend.model.claim.Claim;
-import com.thehalo.halobackend.model.claim.ClaimTimeline;
 import com.thehalo.halobackend.model.policy.Policy;
-import com.thehalo.halobackend.model.profile.AppUser;
+import com.thehalo.halobackend.model.user.AppUser;
+import com.thehalo.halobackend.model.user.UserPlatform;
 import com.thehalo.halobackend.repository.ClaimRepository;
 import com.thehalo.halobackend.repository.PolicyRepository;
-import com.thehalo.halobackend.repository.UserProfileRepository;
+import com.thehalo.halobackend.repository.UserPlatformRepository;
 import com.thehalo.halobackend.security.service.CustomUserDetails;
-import com.thehalo.halobackend.service.system.AuditLogService;
 import com.thehalo.halobackend.utility.IdGeneratorUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -32,10 +34,9 @@ public class ClaimServiceImpl implements ClaimService {
 
     private final ClaimRepository claimRepository;
     private final PolicyRepository policyRepository;
-    private final UserProfileRepository profileRepository;
-    private final AuditLogService auditLogService;
-    private final ClaimMapper claimMapper;
+    private final UserPlatformRepository profileRepository;
 
+    private final ClaimMapper claimMapper;
     // Influencer: list their own claims
     @Transactional(readOnly = true)
     public List<ClaimSummaryResponse> getMyClaims() {
@@ -46,17 +47,42 @@ public class ClaimServiceImpl implements ClaimService {
     // Influencer or officer: full detail of a single claim
     @Transactional(readOnly = true)
     public ClaimDetailResponse getDetail(Long claimId) {
-        Claim claim = findOrThrow(claimId);
-        return claimMapper.toDetailDto(claim);
+        Claim claim = claimRepository.findByIdWithDocuments(claimId)
+                .orElseThrow(() -> new ClaimNotFoundException(claimId));
+        ClaimDetailResponse response = claimMapper.toDetailDto(claim);
+        
+        // Manually map documents to avoid MapStruct applying URL transformation to all fields
+        if (claim.getDocuments() != null && !claim.getDocuments().isEmpty()) {
+            java.util.List<ClaimDocumentResponse> docs = claim.getDocuments().stream()
+                    .map(claimMapper::toDocumentDto)
+                    .collect(java.util.stream.Collectors.toList());
+            response.setDocuments(docs);
+        }
+        
+        // Debug logging
+        System.out.println("=== CLAIM DETAIL DEBUG ===");
+        System.out.println("Claim Number: " + response.getClaimNumber());
+        System.out.println("Description: " + response.getDescription());
+        System.out.println("Profile Platform: " + response.getProfilePlatform());
+        System.out.println("Profile Handle: " + response.getProfileHandle());
+        if (response.getDocuments() != null && !response.getDocuments().isEmpty()) {
+            System.out.println("First Document FileName: " + response.getDocuments().get(0).getFileName());
+            System.out.println("First Document URL: " + response.getDocuments().get(0).getDocumentUrl());
+        }
+        System.out.println("========================");
+        
+        return response;
     }
+
+    private final com.thehalo.halobackend.service.common.FileStorageService fileStorageService;
 
     // Influencer: file a new defamation claim
     @Transactional
-    public ClaimDetailResponse file(FileClaimRequest request) {
+    public ClaimDetailResponse file(FileClaimRequest request, List<org.springframework.web.multipart.MultipartFile> documents) {
         Long userId = currentUserId();
 
         Policy policy = policyRepository.findById(request.getPolicyId())
-                .orElseThrow(() -> new RuntimeException("Policy not found: " + request.getPolicyId()));
+                .orElseThrow(() -> new PolicyNotFoundException(request.getPolicyId()));
 
         // Claim can only be filed against ACTIVE policies
         if (policy.getStatus() != com.thehalo.halobackend.enums.PolicyStatus.ACTIVE) {
@@ -70,8 +96,18 @@ public class ClaimServiceImpl implements ClaimService {
                     policy.getTotalCoverageLimit().doubleValue());
         }
 
-        var profile = profileRepository.findByIdAndUserId(request.getProfileId(), userId)
-                .orElseThrow(() -> new RuntimeException("Profile not found: " + request.getProfileId()));
+        // Get the UserPlatform from the policy
+        UserPlatform userPlatform = policy.getProfile();
+        if (userPlatform == null) {
+            userPlatform = profileRepository.findByUserId(userId)
+                    .stream()
+                    .findFirst()
+                    .orElseThrow(() -> new BusinessRuleViolationException("User has no platforms to file claim against"));
+        }
+
+        if (!userPlatform.getUser().getId().equals(userId)) {
+            throw new UnauthorizedPolicyAccessException(policy.getId(), userId);
+        }
 
         AppUser filer = new AppUser();
         filer.setId(userId);
@@ -79,7 +115,7 @@ public class ClaimServiceImpl implements ClaimService {
         Claim claim = Claim.builder()
                 .claimNumber(IdGeneratorUtil.generateClaimNumber())
                 .policy(policy)
-                .profile(profile)
+                .profile(userPlatform)
                 .filedBy(filer)
                 .incidentDate(request.getIncidentDate())
                 .description(request.getDescription())
@@ -89,12 +125,24 @@ public class ClaimServiceImpl implements ClaimService {
                 .status(ClaimStatus.SUBMITTED)
                 .build();
 
-        Claim saved = claimRepository.save(claim);
+        // Process and store documents
+        if (documents != null && !documents.isEmpty()) {
+            for (org.springframework.web.multipart.MultipartFile file : documents) {
+                if (!file.isEmpty()) {
+                    String path = fileStorageService.storeFile(file, "claims", userId);
+                    com.thehalo.halobackend.model.claim.ClaimDocument doc = com.thehalo.halobackend.model.claim.ClaimDocument.builder()
+                            .claim(claim)
+                            .fileName(file.getOriginalFilename())
+                            .filePath(path)
+                            .documentType("OTHER") // Default category
+                            .fileSizeBytes(file.getSize())
+                            .build();
+                    claim.getDocuments().add(doc);
+                }
+            }
+        }
 
-        // Add initial timeline entry
-        addTimeline(saved, null, ClaimStatus.SUBMITTED, "Claim filed by influencer", filer);
-        auditLogService.logAction("CLAIM", saved.getId().toString(), "CREATE",
-                "Filed new claim for amount: " + request.getClaimAmount());
+        Claim saved = claimRepository.save(claim);
         return claimMapper.toDetailDto(saved);
     }
 
@@ -105,7 +153,6 @@ public class ClaimServiceImpl implements ClaimService {
         guardModifiable(claim);
 
         AppUser officer = officerUser();
-        addTimeline(claim, claim.getStatus(), ClaimStatus.APPROVED, request.getOfficerComments(), officer);
 
         claim.setStatus(ClaimStatus.APPROVED);
         claim.setApprovedAmount(request.getApprovedAmount());
@@ -114,8 +161,6 @@ public class ClaimServiceImpl implements ClaimService {
         claim.setReviewedAt(LocalDateTime.now());
 
         Claim saved = claimRepository.save(claim);
-        auditLogService.logAction("CLAIM", saved.getId().toString(), "APPROVE",
-                "Approved claim for amount: " + request.getApprovedAmount());
         return claimMapper.toDetailDto(saved);
     }
 
@@ -126,7 +171,6 @@ public class ClaimServiceImpl implements ClaimService {
         guardModifiable(claim);
 
         AppUser officer = officerUser();
-        addTimeline(claim, claim.getStatus(), ClaimStatus.DENIED, request.getOfficerComments(), officer);
 
         claim.setStatus(ClaimStatus.DENIED);
         claim.setOfficerComments(request.getOfficerComments());
@@ -134,8 +178,6 @@ public class ClaimServiceImpl implements ClaimService {
         claim.setReviewedAt(LocalDateTime.now());
 
         Claim saved = claimRepository.save(claim);
-        auditLogService.logAction("CLAIM", saved.getId().toString(), "DENY",
-                "Denied claim. Reason: " + request.getOfficerComments());
         return claimMapper.toDetailDto(saved);
     }
 
@@ -146,10 +188,66 @@ public class ClaimServiceImpl implements ClaimService {
                 .stream().map(claimMapper::toSummaryDto).toList();
     }
 
-    private void addTimeline(Claim claim, ClaimStatus from, ClaimStatus to, String note, AppUser by) {
-        claim.getTimeline().add(ClaimTimeline.builder()
-                .claim(claim).fromStatus(from).toStatus(to)
-                .note(note).changedBy(by).build());
+    @Override
+        @Transactional(readOnly = true)
+        public org.springframework.data.domain.Page<ClaimSummaryResponse> getClaimQueuePaginated(String search, ClaimStatus status, org.springframework.data.domain.Pageable pageable) {
+            String searchPattern = (search == null) ? "" : search;
+            // Default to SUBMITTED status if no status is provided - queue should only show unassigned submitted claims
+            ClaimStatus filterStatus = (status == null) ? ClaimStatus.SUBMITTED : status;
+            return claimRepository.findBySearchAndStatus(searchPattern, filterStatus, pageable)
+                    .map(claimMapper::toSummaryDto);
+        }
+
+
+    // Public: get all approved claims for settlement logs
+    @Transactional(readOnly = true)
+    public List<ClaimSummaryResponse> getApprovedClaims() {
+        return claimRepository.findByStatus(ClaimStatus.APPROVED)
+                .stream().map(claimMapper::toSummaryDto).toList();
+    }
+    
+    // Officer: assign claim to current officer
+    @Transactional
+    public ClaimDetailResponse assignClaim(Long claimId) {
+        Claim claim = findOrThrow(claimId);
+        
+        // Only allow assignment of SUBMITTED claims
+        if (claim.getStatus() != ClaimStatus.SUBMITTED) {
+            throw new ClaimNotModifiableException(claimId, "Only SUBMITTED claims can be assigned");
+        }
+        
+        AppUser officer = officerUser();
+        
+        claim.setStatus(ClaimStatus.UNDER_REVIEW);
+        claim.setAssignedOfficer(officer);
+        
+        Claim saved = claimRepository.save(claim);
+        return claimMapper.toDetailDto(saved);
+    }
+    
+    // Officer: release claim back to queue
+    @Transactional
+    public ClaimDetailResponse releaseClaim(Long claimId) {
+        Claim claim = findOrThrow(claimId);
+        
+        // Only allow releasing of UNDER_REVIEW claims
+        if (claim.getStatus() != ClaimStatus.UNDER_REVIEW) {
+            throw new ClaimNotModifiableException(claimId, "Only UNDER_REVIEW claims can be released");
+        }
+        
+        claim.setStatus(ClaimStatus.SUBMITTED);
+        claim.setAssignedOfficer(null);
+        
+        Claim saved = claimRepository.save(claim);
+        return claimMapper.toDetailDto(saved);
+    }
+    
+    // Officer: get claims assigned to current officer
+    @Transactional(readOnly = true)
+    public List<ClaimSummaryResponse> getAssignedClaims() {
+        Long officerId = currentUserId();
+        return claimRepository.findByAssignedOfficerId(officerId)
+                .stream().map(claimMapper::toSummaryDto).toList();
     }
 
     private void guardModifiable(Claim claim) {
@@ -159,7 +257,7 @@ public class ClaimServiceImpl implements ClaimService {
     }
 
     private Claim findOrThrow(Long id) {
-        return claimRepository.findById(id)
+        return claimRepository.findByIdWithDocuments(id)
                 .orElseThrow(() -> new ClaimNotFoundException(id));
     }
 

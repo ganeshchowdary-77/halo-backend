@@ -1,6 +1,6 @@
 package com.thehalo.halobackend.security.service;
 
-import com.thehalo.halobackend.model.profile.AppUser;
+import com.thehalo.halobackend.model.user.AppUser;
 import com.thehalo.halobackend.model.system.RefreshToken;
 import com.thehalo.halobackend.repository.RefreshTokenRepository;
 import com.thehalo.halobackend.security.config.JwtProperties;
@@ -8,7 +8,6 @@ import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -18,7 +17,6 @@ import java.util.Date;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class JwtService {
 
     private final JwtProperties jwtProperties;
@@ -36,11 +34,7 @@ public class JwtService {
         }
         
         if (secret.equals("dev-secret-key-should-be-at-least-32-characters-long")) {
-            log.warn("⚠️  WARNING: Using default development JWT secret. " +
-                     "Change this in production by setting JWT_SECRET environment variable!");
         }
-        
-        log.info("JWT Service initialized successfully");
     }
 
     public String generateAccessToken(AppUser user) {
@@ -80,6 +74,13 @@ public class JwtService {
         return token;
     }
 
+    public String getOrCreateRefreshToken(AppUser user) {
+        return refreshTokenRepository
+            .findFirstByUserIdAndRevokedFalseAndExpiresAtAfterOrderByExpiresAtDesc(user.getId(), LocalDateTime.now())
+            .map(RefreshToken::getToken)
+            .orElseGet(() -> generateRefreshToken(user));
+    }
+
     public TokenValidationResult validateToken(String token) {
         try {
             Claims claims = Jwts.parserBuilder()
@@ -90,10 +91,8 @@ public class JwtService {
             
             return TokenValidationResult.valid(claims);
         } catch (ExpiredJwtException e) {
-            log.debug("Token expired: {}", e.getMessage());
             return TokenValidationResult.expired();
         } catch (JwtException e) {
-            log.debug("Invalid token: {}", e.getMessage());
             return TokenValidationResult.invalid();
         }
     }

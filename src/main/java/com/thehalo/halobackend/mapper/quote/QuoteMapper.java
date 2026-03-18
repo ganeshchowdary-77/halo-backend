@@ -10,6 +10,7 @@ import org.mapstruct.Mapping;
 public interface QuoteMapper {
 
     @Mapping(source = "product.name", target = "productName")
+    @Mapping(source = "profile.platform.name", target = "platformName")
     @Mapping(source = "profile.handle", target = "profileHandle")
     QuoteSummaryResponse toSummaryDto(QuoteRequest quoteRequest);
 
@@ -21,7 +22,14 @@ public interface QuoteMapper {
     @Mapping(source = "profile.platform.name", target = "platformName")
     @Mapping(source = "profile.followerCount", target = "followerCount")
     @Mapping(source = "profile.engagementRate", target = "engagementRate")
-    @Mapping(source = "profile.riskScore", target = "riskScore")
+    @Mapping(source = "riskScore", target = "riskScore")
     @Mapping(target = "assignedUnderwriterName", expression = "java(quoteRequest.getAssignedUnderwriter() != null ? quoteRequest.getAssignedUnderwriter().getFullName() : null)")
     QuoteDetailResponse toDetailDto(QuoteRequest quoteRequest);
+
+    @Mapping(source = "user.fullName", target = "insurerName")
+    @Mapping(source = "profile.platform.name", target = "platform")
+    @Mapping(source = "riskScore", target = "riskScore")
+    @Mapping(source = "offeredPremium", target = "requestedAmount")
+    @Mapping(source = "createdAt", target = "requestedAt")
+    com.thehalo.halobackend.dto.policy.response.PolicyApplicationResponse toApplicationDto(QuoteRequest quoteRequest);
 }

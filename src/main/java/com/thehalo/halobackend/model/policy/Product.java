@@ -63,22 +63,6 @@ public class Product extends BaseEntity {
     @Column(nullable = false)
     private Boolean active = true;
 
-    // Advanced Accounting Fields
-    @Column(nullable = false)
-    @Builder.Default
-    private Integer maturityTermMonths = 12;
-
-    @Column(precision = 19, scale = 4)
-    @Builder.Default
-    private BigDecimal latePaymentDailyInterestRate = new BigDecimal("0.0005"); // 0.05% daily
-
-    @Column(precision = 19, scale = 2)
-    private BigDecimal guaranteedMaturityBenefit;
-
-    @Column(precision = 19, scale = 2)
-    @Builder.Default
-    private BigDecimal surrenderValueMultiplier = new BigDecimal("0.50"); // 50% early withdrawal return
-
     // Helper method to get total coverage amount
     public BigDecimal getCoverageAmount() {
         BigDecimal total = BigDecimal.ZERO;

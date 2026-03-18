@@ -3,8 +3,8 @@ package com.thehalo.halobackend.model.policy;
 import com.thehalo.halobackend.enums.BillingCycle;
 import com.thehalo.halobackend.enums.PolicyStatus;
 import com.thehalo.halobackend.model.base.BaseEntity;
-import com.thehalo.halobackend.model.profile.AppUser;
-import com.thehalo.halobackend.model.profile.UserProfile;
+import com.thehalo.halobackend.model.user.AppUser;
+import com.thehalo.halobackend.model.user.UserPlatform;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SQLDelete;
@@ -45,7 +45,7 @@ public class Policy extends BaseEntity {
     /** The specific social media profile being insured */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "profile_id", nullable = false)
-    private UserProfile profile;
+    private UserPlatform profile;
 
     /** The product/coverage tier selected */
     @ManyToOne(fetch = FetchType.LAZY)

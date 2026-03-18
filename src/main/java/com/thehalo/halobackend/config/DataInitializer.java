@@ -1,12 +1,11 @@
 package com.thehalo.halobackend.config;
 
-import com.thehalo.halobackend.model.profile.AppUser;
-import com.thehalo.halobackend.model.profile.AppRole;
+import com.thehalo.halobackend.model.user.AppUser;
+import com.thehalo.halobackend.model.user.AppRole;
 import com.thehalo.halobackend.enums.RoleName;
 import com.thehalo.halobackend.repository.AppUserRepository;
 import com.thehalo.halobackend.repository.AppRoleRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -24,7 +23,6 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @RequiredArgsConstructor
-@Slf4j
 public class DataInitializer implements CommandLineRunner {
 
     private final AppUserRepository userRepository;
@@ -34,14 +32,18 @@ public class DataInitializer implements CommandLineRunner {
     // ─── Seed credentials (change before prod, store in Vault/Env) ─────────
     private static final String DEFAULT_PASSWORD    = "admin123";
 
-    private static final String IAM_ADMIN_EMAIL     = "iamadmin@thehalo.com";
-    private static final String POLICY_ADMIN_EMAIL  = "policy@thehalo.com";
+    private static final String IAM_ADMIN_EMAIL       = "iamadmin@thehalo.com";
+    private static final String POLICY_ADMIN_EMAIL    = "policy@thehalo.com";
+    private static final String UNDERWRITER_EMAIL     = "underwriter@thehalo.com";
+    private static final String CLAIMS_OFFICER_EMAIL  = "claims@thehalo.com";
 
     @Override
     public void run(String... args) {
         initializeRoles();
-        seedUser(IAM_ADMIN_EMAIL,    "IAM Administrator", "IAM",   "Administrator", RoleName.IAM_ADMIN);
-        seedUser(POLICY_ADMIN_EMAIL, "Priya Sharma",      "Priya", "Sharma",        RoleName.POLICY_ADMIN);
+        seedUser(IAM_ADMIN_EMAIL,      "IAM Administrator", "IAM",        "Administrator", RoleName.IAM_ADMIN);
+        seedUser(POLICY_ADMIN_EMAIL,   "Spoorthy",          "Spoorthy",   "Admin",         RoleName.POLICY_ADMIN);
+        seedUser(UNDERWRITER_EMAIL,    "Sri Nayani",        "Sri",        "Nayani",        RoleName.UNDERWRITER);
+        seedUser(CLAIMS_OFFICER_EMAIL, "Mani Kumar",        "Mani",       "Kumar",         RoleName.CLAIMS_OFFICER);
     }
 
     // ─── Private helpers ────────────────────────────────────────────────────
@@ -55,7 +57,6 @@ public class DataInitializer implements CommandLineRunner {
                 AppRole role = new AppRole();
                 role.setName(roleName);
                 roleRepository.save(role);
-                log.info("DataInitializer: Created missing role → {}", roleName);
             }
         }
     }
@@ -68,7 +69,6 @@ public class DataInitializer implements CommandLineRunner {
     private void seedUser(String email, String fullName, String firstName,
                           String lastName, RoleName roleName) {
         if (userRepository.findByEmail(email).isPresent()) {
-            log.info("DataInitializer: {} already exists — skipping", email);
             return;
         }
 
@@ -86,6 +86,5 @@ public class DataInitializer implements CommandLineRunner {
                 .build();
 
         userRepository.save(user);
-        log.info("DataInitializer: Created {} [{}]", email, roleName);
     }
 }

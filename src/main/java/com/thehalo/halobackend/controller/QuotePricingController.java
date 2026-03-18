@@ -5,9 +5,9 @@ import com.thehalo.halobackend.dto.quote.request.QuotePricingRequest;
 import com.thehalo.halobackend.dto.quote.response.QuotePricingResponse;
 import com.thehalo.halobackend.service.quote.QuotePricingService;
 import com.thehalo.halobackend.model.policy.Product;
-import com.thehalo.halobackend.model.profile.UserProfile;
+import com.thehalo.halobackend.model.user.UserPlatform;
 import com.thehalo.halobackend.repository.ProductRepository;
-import com.thehalo.halobackend.repository.UserProfileRepository;
+import com.thehalo.halobackend.repository.UserPlatformRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -25,7 +25,7 @@ public class QuotePricingController {
 
     private final QuotePricingService pricingService;
     private final ProductRepository productRepository;
-    private final UserProfileRepository profileRepository;
+    private final UserPlatformRepository profileRepository;
 
     @PostMapping("/pricing")
     @Operation(summary = "Get quote pricing information")
@@ -34,7 +34,7 @@ public class QuotePricingController {
         Product product = productRepository.findById(request.getProductId())
             .orElseThrow(() -> new RuntimeException("Product not found"));
 
-        UserProfile profile = null;
+        UserPlatform profile = null;
         if (request.getInfluencerProfileId() != null) {
             profile = profileRepository.findById(request.getInfluencerProfileId())
                 .orElse(null);
@@ -113,7 +113,7 @@ public class QuotePricingController {
         return ResponseFactory.success(response, "Estimate calculated successfully");
     }
 
-    private String determineRiskLevel(UserProfile profile) {
+    private String determineRiskLevel(UserPlatform profile) {
         // Simple risk level determination
         if (profile.getNiche() == com.thehalo.halobackend.enums.Niche.FINANCE || 
             profile.getNiche() == com.thehalo.halobackend.enums.Niche.CRYPTO) {

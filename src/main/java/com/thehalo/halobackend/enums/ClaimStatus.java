@@ -12,5 +12,26 @@ public enum ClaimStatus {
     /** Claim denied by officer */
     DENIED,
     /** Payout completed; claim is administratively closed */
-    CLOSED
+    CLOSED;
+
+    /**
+     * Check if this status represents a final state (no further changes expected)
+     */
+    public boolean isFinal() {
+        return this == APPROVED || this == DENIED || this == CLOSED;
+    }
+
+    /**
+     * Check if this status allows modifications
+     */
+    public boolean isModifiable() {
+        return this == SUBMITTED || this == UNDER_REVIEW || this == PENDING_INFORMATION;
+    }
+
+    /**
+     * Check if this status requires action from claims officer
+     */
+    public boolean requiresOfficerAction() {
+        return this == SUBMITTED || this == UNDER_REVIEW;
+    }
 }

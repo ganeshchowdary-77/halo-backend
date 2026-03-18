@@ -1,6 +1,6 @@
 package com.thehalo.halobackend.security.service;
 
-import com.thehalo.halobackend.model.profile.AppUser;
+import com.thehalo.halobackend.model.user.AppUser;
 import com.thehalo.halobackend.repository.AppUserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.*;
@@ -14,7 +14,6 @@ public class CustomUserDetailsService implements UserDetailsService {
     private final AppUserRepository userRepository;
 
     @Override
-    @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username)
             throws UsernameNotFoundException {
 

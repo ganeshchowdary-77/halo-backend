@@ -1,7 +1,7 @@
 package com.thehalo.halobackend.model.payment;
 
 import com.thehalo.halobackend.model.base.BaseEntity;
-import com.thehalo.halobackend.model.profile.AppUser;
+import com.thehalo.halobackend.model.user.AppUser;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SQLDelete;

@@ -6,12 +6,11 @@ import com.thehalo.halobackend.dto.product.response.ProductDetailResponse;
 import com.thehalo.halobackend.dto.product.response.ProductSummaryResponse;
 import com.thehalo.halobackend.enums.PolicyStatus;
 import com.thehalo.halobackend.exception.business.DuplicateResourceException;
-import com.thehalo.halobackend.exception.business.ResourceNotFoundException;
+import com.thehalo.halobackend.exception.domain.product.ProductNotFoundException;
 import com.thehalo.halobackend.mapper.product.ProductMapper;
 import com.thehalo.halobackend.model.policy.Product;
 import com.thehalo.halobackend.repository.PolicyRepository;
 import com.thehalo.halobackend.repository.ProductRepository;
-import com.thehalo.halobackend.service.system.AuditLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,21 +26,19 @@ public class ProductServiceImpl implements ProductService {
     private final ProductRepository productRepository;
     private final PolicyRepository policyRepository;
     private final ProductMapper productMapper;
-    private final AuditLogService auditLogService;
 
     @Override
-    @Transactional(readOnly = true)
     public List<ProductSummaryResponse> getActiveSummaries() {
         return productRepository.findAllByActiveTrue()
                 .stream().map(this::enrichSummary).toList();
     }
 
     @Override
-    @Transactional(readOnly = true)
     public ProductDetailResponse getDetail(Long id) {
         Product p = findOrThrow(id);
         ProductDetailResponse detail = productMapper.toDetail(p);
         detail.setActivePolicyCount(policyRepository.countByProductIdAndStatus(id, PolicyStatus.ACTIVE));
+        detail.setKeyFeatures(generateFeatures(p));
         return detail;
     }
 
@@ -52,8 +49,6 @@ public class ProductServiceImpl implements ProductService {
             throw new DuplicateResourceException("Product '" + request.getName() + "'");
         }
         Product saved = productRepository.save(productMapper.toEntity(request));
-        auditLogService.logAction("PRODUCT", saved.getId().toString(), "CREATE",
-                "Created new insurance product: " + saved.getName());
         return productMapper.toDetail(saved);
     }
 
@@ -68,8 +63,6 @@ public class ProductServiceImpl implements ProductService {
         }
         productMapper.updateEntity(request, product);
         Product saved = productRepository.save(product);
-        auditLogService.logAction("PRODUCT", saved.getId().toString(), "UPDATE",
-                "Updated insurance product: " + saved.getName());
         return productMapper.toDetail(saved);
     }
 
@@ -79,12 +72,16 @@ public class ProductServiceImpl implements ProductService {
         // Entity has @SQLDelete — this triggers soft delete
         Product product = findOrThrow(id);
         productRepository.delete(product);
-        auditLogService.logAction("PRODUCT", id.toString(), "DELETE", "Soft deleted product: " + product.getName());
     }
 
     // Decorate product summary with human-readable feature bullets
     private ProductSummaryResponse enrichSummary(Product p) {
         ProductSummaryResponse s = productMapper.toSummary(p);
+        s.setKeyFeatures(generateFeatures(p));
+        return s;
+    }
+
+    private List<String> generateFeatures(Product p) {
         List<String> features = new ArrayList<>();
         if (Boolean.TRUE.equals(p.getCoveredLegal()) && p.getCoverageLimitLegal() != null)
             features.add("Legal defence up to $" + p.getCoverageLimitLegal().toPlainString());
@@ -92,12 +89,11 @@ public class ProductServiceImpl implements ProductService {
             features.add("PR crisis cover up to $" + p.getCoverageLimitPR().toPlainString());
         if (Boolean.TRUE.equals(p.getCoveredMonitoring()) && p.getCoverageLimitMonitoring() != null)
             features.add("Reputation monitoring up to $" + p.getCoverageLimitMonitoring().toPlainString());
-        s.setKeyFeatures(features);
-        return s;
+        return features;
     }
 
     private Product findOrThrow(Long id) {
         return productRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Product not found: " + id));
+                .orElseThrow(() -> new ProductNotFoundException(id));
     }
 }

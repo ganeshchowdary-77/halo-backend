@@ -2,11 +2,14 @@ package com.thehalo.halobackend.dto.payment.request;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
-import lombok.Data;
+import lombok.*;
 
 import java.math.BigDecimal;
 
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ProcessPaymentRequest {
 
     @NotNull(message = "Payment method ID is required")

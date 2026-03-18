@@ -15,5 +15,22 @@ public interface PolicyService {
 
         PolicyDetailResponse purchaseFromQuote(Long quoteId);
 
+        PolicyDetailResponse payPremium(Long policyId);
+
         PolicySummaryResponse cancel(Long policyId);
+
+        List<PolicySummaryResponse> getAllPolicies();
+
+        List<com.thehalo.halobackend.dto.policy.response.PolicyApplicationResponse> getAdminApplications();
+
+        void approvePolicyApplication(Long id);
+
+        void rejectPolicyApplication(Long id, String reason);
+
+
+        // Helper methods for navigation visibility
+        boolean hasActivePolicies();
+
+        boolean hasPaidPremium();
+
 }

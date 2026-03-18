@@ -4,9 +4,12 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.Data;
+import lombok.*;
 
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class AddPaymentMethodRequest {
 
     @NotBlank(message = "Card brand is required")
@@ -23,6 +26,7 @@ public class AddPaymentMethodRequest {
     @NotNull(message = "Expiry year is required")
     private Integer expiryYear;
 
+    @Builder.Default
     private Boolean isDefault = false;
 
 }

@@ -4,7 +4,7 @@ import com.thehalo.halobackend.dto.common.ResponseFactory;
 import com.thehalo.halobackend.dto.risk.request.CreateRiskParameterRequest;
 import com.thehalo.halobackend.dto.risk.request.UpdateRiskParameterRequest;
 import com.thehalo.halobackend.dto.risk.response.RiskParameterResponse;
-import com.thehalo.halobackend.service.risk.RiskParameterService;
+import com.thehalo.halobackend.service.underwriting.RiskParameterService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -40,10 +40,12 @@ public class RiskParameterController {
     }
 
     @GetMapping
-    @Operation(summary = "Get all risk parameters", description = "Retrieve all active risk parameters with pagination")
+    @Operation(summary = "Get all risk parameters", description = "Retrieve all active risk parameters with pagination and search")
     @PreAuthorize("hasRole('UNDERWRITER') or hasRole('IAM_ADMIN')")
-    public ResponseEntity<?> getAllParameters(Pageable pageable) {
-        Page<RiskParameterResponse> parameters = riskParameterService.getAllParameters(pageable);
+    public ResponseEntity<?> getAllParameters(
+            @RequestParam(required = false, defaultValue = "") String search,
+            Pageable pageable) {
+        Page<RiskParameterResponse> parameters = riskParameterService.getAllParameters(search, pageable);
         return ResponseFactory.success(parameters, "Risk parameters retrieved successfully");
     }
 

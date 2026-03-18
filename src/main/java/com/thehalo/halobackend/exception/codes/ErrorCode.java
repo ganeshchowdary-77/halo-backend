@@ -19,6 +19,13 @@ public enum ErrorCode {
     PROFILE_NOT_FOUND(404),
     PLATFORM_HANDLE_ALREADY_LINKED(409),
     PLATFORM_NOT_SUPPORTED(422),
+    PROFILE_NOT_VERIFIED(403),
+
+    // ── Payment Domain ─────────────────────────────────────────────
+    UNAUTHORIZED_ACCESS(403),
+    INVALID_PAYMENT_STATE(400),
+    INSUFFICIENT_PAYMENT(400),
+    PAYMENT_PROCESSING_FAILED(400),
 
     // ── Policy Domain ──────────────────────────────────────────────
     POLICY_NOT_FOUND(404),
@@ -52,6 +59,8 @@ public enum ErrorCode {
     // ── System ─────────────────────────────────────────────────────
     DATABASE_ERROR(500),
     EXTERNAL_SERVICE_ERROR(503),
+    FILE_STORAGE_ERROR(500),
+    INVALID_FILE_NAME(400),
     INTERNAL_SERVER_ERROR(500);
 
     private final int status;

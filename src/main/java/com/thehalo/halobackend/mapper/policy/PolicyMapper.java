@@ -12,12 +12,16 @@ import java.time.LocalDate;
 public interface PolicyMapper {
 
     @Mapping(source = "product.name", target = "productName")
+    @Mapping(source = "profile.platform.name", target = "platformName")
+    @Mapping(target = "insuredProfileId", source = "profile.id") // UserPlatform ID
+    @Mapping(target = "insuredProfileHandle", source = "profile.handle")
     @Mapping(target = "renewalEligible", expression = "java(isRenewalEligible(policy))")
     PolicySummaryResponse toSummaryDto(Policy policy);
 
     @Mapping(source = "product.id", target = "productId")
     @Mapping(source = "product.name", target = "productName")
     @Mapping(source = "product.tagline", target = "productTagline")
+    @Mapping(source = "profile.id", target = "insuredProfileId") // UserPlatform ID
     @Mapping(source = "profile.handle", target = "insuredProfileHandle")
     @Mapping(source = "profile.platform.name", target = "insuredPlatform")
     @Mapping(source = "product.coveredLegal", target = "coverageLegal")

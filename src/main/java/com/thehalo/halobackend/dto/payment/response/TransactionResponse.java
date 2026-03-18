@@ -2,14 +2,15 @@ package com.thehalo.halobackend.dto.payment.response;
 
 import com.thehalo.halobackend.enums.TransactionStatus;
 import com.thehalo.halobackend.enums.TransactionType;
-import lombok.Builder;
-import lombok.Data;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class TransactionResponse {
 
     private Long id;

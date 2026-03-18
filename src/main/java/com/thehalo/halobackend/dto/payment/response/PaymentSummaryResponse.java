@@ -1,13 +1,14 @@
 package com.thehalo.halobackend.dto.payment.response;
 
-import lombok.Builder;
-import lombok.Data;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class PaymentSummaryResponse {
 
     private Long policyId;

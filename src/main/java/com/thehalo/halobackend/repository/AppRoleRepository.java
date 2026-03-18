@@ -1,7 +1,7 @@
 package com.thehalo.halobackend.repository;
 
 import com.thehalo.halobackend.enums.RoleName;
-import com.thehalo.halobackend.model.profile.AppRole;
+import com.thehalo.halobackend.model.user.AppRole;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

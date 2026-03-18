@@ -18,7 +18,10 @@ public class ProductDetailResponse {
         private String tagline;
         // Full product description for detail view
         private String description;
+        // Monthly base premium
         private BigDecimal basePremium;
+
+        private java.util.List<String> keyFeatures;
 
         private Boolean coverageLegal;
         // Maximum payout for legal defence claims
@@ -34,6 +37,8 @@ public class ProductDetailResponse {
 
         // Sum of all sub-limits
         private BigDecimal totalCoverageLimit;
+        // Alias for totalCoverageLimit for consistency with PublicProductResponse
+        private BigDecimal coverageAmount;
         private Boolean active;
 
         private LocalDateTime createdAt;

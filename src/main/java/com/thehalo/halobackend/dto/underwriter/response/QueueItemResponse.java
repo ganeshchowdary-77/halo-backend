@@ -7,7 +7,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Getter
-@Builder
+@Builder(toBuilder = true)
 public class QueueItemResponse {
     private Long quoteId;
     private String quoteNumber; // Add quote number for better audit trail

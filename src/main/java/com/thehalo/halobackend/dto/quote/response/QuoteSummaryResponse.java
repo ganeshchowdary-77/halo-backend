@@ -1,5 +1,6 @@
 package com.thehalo.halobackend.dto.quote.response;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.thehalo.halobackend.enums.QuoteStatus;
 import lombok.*;
 
@@ -18,8 +19,13 @@ public class QuoteSummaryResponse {
     private String quoteNumber;
     private QuoteStatus status;
     private String productName;
+    private String platformName;
     private String profileHandle;
     private BigDecimal offeredPremium;
+    
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdAt;
+    
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime reviewedAt;
 }

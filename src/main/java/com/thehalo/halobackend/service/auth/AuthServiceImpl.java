@@ -14,8 +14,8 @@ import com.thehalo.halobackend.exception.security.RefreshTokenExpiredException;
 
 import static com.thehalo.halobackend.service.auth.AuthConstants.MILLISECONDS_TO_SECONDS;
 import static com.thehalo.halobackend.service.auth.AuthConstants.TOKEN_TYPE_BEARER;
-import com.thehalo.halobackend.model.profile.AppRole;
-import com.thehalo.halobackend.model.profile.AppUser;
+import com.thehalo.halobackend.model.user.AppRole;
+import com.thehalo.halobackend.model.user.AppUser;
 import com.thehalo.halobackend.repository.AppRoleRepository;
 import com.thehalo.halobackend.repository.AppUserRepository;
 import com.thehalo.halobackend.security.config.JwtProperties;
@@ -60,7 +60,6 @@ public class AuthServiceImpl implements AuthService {
         return buildResponse(saved);
     }
 
-    @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
         try {
             authManager.authenticate(new UsernamePasswordAuthenticationToken(
@@ -124,7 +123,7 @@ public class AuthServiceImpl implements AuthService {
         }
         
         String accessToken = jwtService.generateAccessToken(user);
-        String refreshToken = jwtService.generateRefreshToken(user);
+        String refreshToken = jwtService.getOrCreateRefreshToken(user);
         
         return buildResponseWithTokens(user, accessToken, refreshToken);
     }

@@ -6,13 +6,13 @@ import org.springframework.http.ResponseEntity;
 import java.time.LocalDateTime;
 
 public class ResponseFactory {
-    public static <T> ResponseEntity<ApiResponse<T>> success(
+    public static <T> ResponseEntity<HaloApiResponse<T>> success(
             T data,
             String message,
             HttpStatus status
     ) {
 
-        ApiResponse<T> response = ApiResponse.<T>builder()
+        HaloApiResponse<T> response = HaloApiResponse.<T>builder()
                 .success(true)
                 .message(message)
                 .data(data)
@@ -23,18 +23,18 @@ public class ResponseFactory {
         return ResponseEntity.status(status).body(response);
     }
 
-    public static <T> ResponseEntity<ApiResponse<T>> success(
+    public static <T> ResponseEntity<HaloApiResponse<T>> success(
             T data,
             String message
     ) {
         return success(data, message, HttpStatus.OK);
     }
 
-    public static ResponseEntity<ApiResponse<Void>> success(
+    public static ResponseEntity<HaloApiResponse<Void>> success(
             String message
     ) {
 
-        ApiResponse<Void> response = ApiResponse.<Void>builder()
+        HaloApiResponse<Void> response = HaloApiResponse.<Void>builder()
                 .success(true)
                 .message(message)
                 .timestamp(LocalDateTime.now())
@@ -44,11 +44,11 @@ public class ResponseFactory {
         return ResponseEntity.ok(response);
     }
 
-    public static ResponseEntity<ApiResponse<Void>> error(
+    public static <T> ResponseEntity<HaloApiResponse<T>> error(
             String message,
             int statusCode
     ) {
-        ApiResponse<Void> response = ApiResponse.<Void>builder()
+        HaloApiResponse<T> response = HaloApiResponse.<T>builder()
                 .success(false)
                 .message(message)
                 .timestamp(LocalDateTime.now())

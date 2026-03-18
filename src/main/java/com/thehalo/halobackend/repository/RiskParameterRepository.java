@@ -1,7 +1,6 @@
 package com.thehalo.halobackend.repository;
 
-import com.thehalo.halobackend.model.RiskParameter;
-import com.thehalo.halobackend.enums.Niche;
+import com.thehalo.halobackend.model.underwriting.RiskParameter;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -21,9 +20,14 @@ public interface RiskParameterRepository extends JpaRepository<RiskParameter, Lo
     boolean existsByParamKey(String paramKey);
 
     /**
-     * Find risk parameter by key
+     * Find risk parameter by key (only active)
      */
     Optional<RiskParameter> findByParamKeyAndActiveTrue(String paramKey);
+
+    /**
+     * Find risk parameter by key (including inactive)
+     */
+    Optional<RiskParameter> findByParamKey(String paramKey);
 
     /**
      * Find all active risk parameters
@@ -31,35 +35,16 @@ public interface RiskParameterRepository extends JpaRepository<RiskParameter, Lo
     List<RiskParameter> findByActiveTrueOrderByParamKey();
 
     /**
-     * Find all active risk parameters with pagination
+     * Find all risk parameters (including inactive)
      */
-    Page<RiskParameter> findByActiveTrue(Pageable pageable);
+    List<RiskParameter> findAllByOrderByParamKey();
 
     /**
-     * Find risk parameters for a specific niche
+     * Search risk parameters by param key or description
      */
-    List<RiskParameter> findByApplicableNicheAndActiveTrueOrderByParamKey(Niche niche);
-
-    /**
-     * Find follower tier parameters that apply to a specific follower count
-     */
-    @Query("SELECT rp FROM RiskParameter rp WHERE rp.active = true " +
-           "AND rp.paramKey LIKE 'FOLLOWER_TIER_%' " +
-           "AND (rp.minFollowerCount IS NULL OR rp.minFollowerCount <= :followerCount) " +
-           "AND (rp.maxFollowerCount IS NULL OR rp.maxFollowerCount >= :followerCount)")
-    List<RiskParameter> findApplicableFollowerTierParameters(@Param("followerCount") Long followerCount);
-
-    /**
-     * Find platform-specific risk parameters
-     */
-    @Query("SELECT rp FROM RiskParameter rp WHERE rp.active = true " +
-           "AND rp.paramKey LIKE 'PLATFORM_%'")
-    List<RiskParameter> findPlatformParameters();
-
-    /**
-     * Find niche-specific risk parameters
-     */
-    @Query("SELECT rp FROM RiskParameter rp WHERE rp.active = true " +
-           "AND rp.paramKey LIKE 'NICHE_%'")
-    List<RiskParameter> findNicheParameters();
+    @Query("SELECT r FROM RiskParameter r WHERE " +
+           "LOWER(r.paramKey) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(r.description) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "ORDER BY r.paramKey")
+    Page<RiskParameter> findBySearchTerm(@Param("search") String search, Pageable pageable);
 }

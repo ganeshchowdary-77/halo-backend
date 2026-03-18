@@ -17,12 +17,17 @@ public interface ProductMapper {
     // service layer)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "active", ignore = true)
-    @Mapping(target = "tagline", ignore = true)
-    @Mapping(target = "maturityTermMonths", ignore = true)
-    @Mapping(target = "latePaymentDailyInterestRate", ignore = true)
-    @Mapping(target = "guaranteedMaturityBenefit", ignore = true)
-    @Mapping(target = "surrenderValueMultiplier", ignore = true)
     Product toEntity(CreateProductRequest request);
+
+    // Public product response for landing page
+    @Mapping(target = "coverageAmount", expression = "java(product.getCoverageAmount())")
+    @Mapping(target = "coveredLegal", source = "coveredLegal")
+    @Mapping(target = "coveredPR", source = "coveredPR")
+    @Mapping(target = "coveredMonitoring", source = "coveredMonitoring")
+    @Mapping(target = "features", ignore = true)
+    @Mapping(target = "popular", constant = "false")
+    @Mapping(target = "marketingMessage", source = "tagline")
+    com.thehalo.halobackend.dto.product.response.PublicProductResponse toPublicResponse(Product product);
 
     // Summary projection: rename coveredX -> coverageX to match DTO field names
     @Mapping(target = "coverageLegal", source = "coveredLegal")
@@ -36,22 +41,19 @@ public interface ProductMapper {
     @Mapping(target = "coveragePR", source = "coveredPR")
     @Mapping(target = "coverageMonitoring", source = "coveredMonitoring")
     @Mapping(target = "totalCoverageLimit", expression = "java(sumLimits(product))")
+    @Mapping(target = "coverageAmount", expression = "java(sumLimits(product))")
     @Mapping(target = "activePolicyCount", ignore = true)
+    @Mapping(target = "keyFeatures", ignore = true)
     ProductDetailResponse toDetail(Product product);
 
     // Null-safe partial update of an existing entity from a patch request
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "tagline", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "createdBy", ignore = true)
     @Mapping(target = "updatedBy", ignore = true)
     @Mapping(target = "deletedAt", ignore = true)
-    @Mapping(target = "maturityTermMonths", ignore = true)
-    @Mapping(target = "latePaymentDailyInterestRate", ignore = true)
-    @Mapping(target = "guaranteedMaturityBenefit", ignore = true)
-    @Mapping(target = "surrenderValueMultiplier", ignore = true)
     void updateEntity(UpdateProductRequest request, @MappingTarget Product product);
 
     // Utility: map list of products to summary list

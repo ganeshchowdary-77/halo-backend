@@ -21,4 +21,5 @@ public class UpdateProductRequest {
     private BigDecimal coverageLimitMonitoring;
     private BigDecimal basePremium;
     private Boolean active;
+    private String tagline;
 }

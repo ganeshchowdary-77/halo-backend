@@ -4,16 +4,21 @@ import com.thehalo.halobackend.dto.auth.response.AuthResponse;
 import com.thehalo.halobackend.dto.iam.request.CreateStaffRequest;
 import com.thehalo.halobackend.dto.iam.request.UpdateStaffRequest;
 import com.thehalo.halobackend.dto.iam.response.StaffSummaryResponse;
+import com.thehalo.halobackend.dto.platform.response.PlatformSummaryResponse;
 import com.thehalo.halobackend.enums.RoleName;
 import com.thehalo.halobackend.exception.business.DuplicateResourceException;
-import com.thehalo.halobackend.exception.business.ResourceNotFoundException;
+import com.thehalo.halobackend.exception.domain.profile.ProfileNotFoundException;
+import com.thehalo.halobackend.exception.domain.iam.StaffNotFoundException;
 import com.thehalo.halobackend.exception.domain.auth.RoleNotFoundException;
 import com.thehalo.halobackend.exception.validation.ValidationException;
 import com.thehalo.halobackend.mapper.iam.IamMapper;
-import com.thehalo.halobackend.model.profile.AppRole;
-import com.thehalo.halobackend.model.profile.AppUser;
+import com.thehalo.halobackend.mapper.platform.PlatformMapper;
+import com.thehalo.halobackend.model.user.AppRole;
+import com.thehalo.halobackend.model.user.AppUser;
+import com.thehalo.halobackend.model.user.UserPlatform;
 import com.thehalo.halobackend.repository.AppRoleRepository;
 import com.thehalo.halobackend.repository.AppUserRepository;
+import com.thehalo.halobackend.repository.UserPlatformRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -28,8 +33,10 @@ public class IamServiceImpl implements IamService {
 
     private final AppUserRepository userRepository;
     private final AppRoleRepository roleRepository;
+    private final UserPlatformRepository profileRepository;
     private final PasswordEncoder passwordEncoder;
     private final IamMapper iamMapper;
+    private final PlatformMapper platformMapper;
 
     @Transactional
     public AuthResponse createStaff(CreateStaffRequest request) {
@@ -61,23 +68,21 @@ public class IamServiceImpl implements IamService {
                 .build();
     }
 
-    @Transactional(readOnly = true)
     public List<StaffSummaryResponse> getAllStaff() {
         List<AppUser> staffUsers = userRepository.findByRoleNameNot(RoleName.INFLUENCER);
         return iamMapper.toStaffSummaryList(staffUsers);
     }
 
-    @Transactional(readOnly = true)
     public StaffSummaryResponse getStaffById(Long id) {
         AppUser user = userRepository.findByIdAndRoleNameNot(id, RoleName.INFLUENCER)
-                .orElseThrow(() -> new ResourceNotFoundException("Staff member with ID " + id));
+                .orElseThrow(() -> new StaffNotFoundException(id));
         return iamMapper.toStaffSummary(user);
     }
 
     @Transactional
     public StaffSummaryResponse updateStaff(Long id, UpdateStaffRequest request) {
         AppUser user = userRepository.findByIdAndRoleNameNot(id, RoleName.INFLUENCER)
-                .orElseThrow(() -> new ResourceNotFoundException("Staff member with ID " + id));
+                .orElseThrow(() -> new StaffNotFoundException(id));
 
         if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
             if (userRepository.existsByEmail(request.getEmail())) {
@@ -101,13 +106,12 @@ public class IamServiceImpl implements IamService {
     @Transactional
     public void deactivateStaff(Long id) {
         AppUser user = userRepository.findByIdAndRoleNameNot(id, RoleName.INFLUENCER)
-                .orElseThrow(() -> new ResourceNotFoundException("Staff member with ID " + id));
+                .orElseThrow(() -> new StaffNotFoundException(id));
         
         user.setDeletedAt(LocalDateTime.now());
         userRepository.save(user);
     }
 
-    @Transactional(readOnly = true)
     public List<StaffSummaryResponse> getStaffByRole(String roleName) {
         try {
             RoleName role = RoleName.valueOf(roleName.toUpperCase());
@@ -119,5 +123,68 @@ public class IamServiceImpl implements IamService {
         } catch (IllegalArgumentException e) {
             throw new ValidationException("Invalid role name: " + roleName);
         }
+    }
+
+    public List<PlatformSummaryResponse> getUnverifiedProfiles() {
+        List<UserPlatform> unverifiedProfiles = profileRepository.findByVerifiedFalse();
+        return unverifiedProfiles.stream()
+                .map(platform -> {
+                    PlatformSummaryResponse dto = platformMapper.toSummaryDto(platform);
+                    // Manually generate document URLs only if paths don't already contain URLs
+                    dto.setAddressProofUrl(ensureFullUrl(platform.getAddressProofPath()));
+                    dto.setIncomeProofUrl(ensureFullUrl(platform.getIncomeProofPath()));
+                    return dto;
+                })
+                .toList();
+    }
+    
+    private String ensureFullUrl(String pathOrUrl) {
+        if (pathOrUrl == null || pathOrUrl.isEmpty()) {
+            return null;
+        }
+        // If it's already a full URL, return as-is
+        if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) {
+            return pathOrUrl;
+        }
+        // Otherwise, convert path to URL
+        if (pathOrUrl.startsWith("uploads/")) {
+            return "http://localhost:8080/" + pathOrUrl;
+        } else if (pathOrUrl.startsWith("platforms/") || pathOrUrl.startsWith("claims/")) {
+            return "http://localhost:8080/" + pathOrUrl;
+        } else {
+            return "http://localhost:8080/uploads/" + pathOrUrl;
+        }
+    }
+
+    @Transactional
+    public PlatformSummaryResponse verifyProfile(Long profileId) {
+        UserPlatform profile = profileRepository.findById(profileId)
+                .orElseThrow(() -> new ProfileNotFoundException(profileId));
+        
+        profile.setVerified(true);
+        profile.setVerifiedAt(LocalDateTime.now());
+        profile.setVerifiedBy(currentUser());
+        
+        UserPlatform savedProfile = profileRepository.save(profile);
+        return platformMapper.toSummaryDto(savedProfile);
+    }
+
+    @Transactional
+    public com.thehalo.halobackend.dto.platform.response.PlatformVerificationResponse verifyAspect(Long profileId, String verificationType, Boolean approved, String rejectionReason) {
+        // Delegate to PlatformVerificationService
+        com.thehalo.halobackend.service.user.PlatformVerificationService verificationService = 
+            new com.thehalo.halobackend.service.user.PlatformVerificationService(profileRepository);
+        return verificationService.verifyAspect(profileId, verificationType, approved, rejectionReason);
+    }
+
+    private Long currentUserId() {
+        return ((com.thehalo.halobackend.security.service.CustomUserDetails) org.springframework.security.core.context.SecurityContextHolder.getContext()
+                .getAuthentication().getPrincipal()).getUserId();
+    }
+
+    private AppUser currentUser() {
+        AppUser user = new AppUser();
+        user.setId(currentUserId());
+        return user;
     }
 }

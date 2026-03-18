@@ -9,19 +9,22 @@ import com.thehalo.halobackend.exception.domain.policy.DuplicateActivePolicyExce
 import com.thehalo.halobackend.exception.domain.policy.PolicyNotFoundException;
 import com.thehalo.halobackend.exception.domain.policy.PolicyNotActiveException;
 import com.thehalo.halobackend.exception.domain.policy.ProductNotAvailableException;
-import com.thehalo.halobackend.exception.business.ResourceNotFoundException;
+import com.thehalo.halobackend.exception.domain.policy.InvalidPolicyStateException;
+import com.thehalo.halobackend.exception.domain.product.ProductNotFoundException;
+import com.thehalo.halobackend.exception.domain.profile.ProfileNotFoundException;
+import com.thehalo.halobackend.exception.domain.quote.QuoteNotFoundException;
+import com.thehalo.halobackend.exception.domain.policy.UnauthorizedPolicyAccessException;
 import com.thehalo.halobackend.mapper.policy.PolicyMapper;
 import com.thehalo.halobackend.model.policy.Policy;
 import com.thehalo.halobackend.model.policy.Product;
 import com.thehalo.halobackend.model.policy.QuoteRequest;
-import com.thehalo.halobackend.model.profile.AppUser;
-import com.thehalo.halobackend.model.profile.UserProfile;
+import com.thehalo.halobackend.model.user.AppUser;
+import com.thehalo.halobackend.model.user.UserPlatform;
 import com.thehalo.halobackend.repository.PolicyRepository;
 import com.thehalo.halobackend.repository.ProductRepository;
 import com.thehalo.halobackend.repository.QuoteRequestRepository;
-import com.thehalo.halobackend.repository.UserProfileRepository;
+import com.thehalo.halobackend.repository.UserPlatformRepository;
 import com.thehalo.halobackend.security.service.CustomUserDetails;
-import com.thehalo.halobackend.service.system.AuditLogService;
 import com.thehalo.halobackend.utility.IdGeneratorUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -38,10 +41,10 @@ public class PolicyServiceImpl implements PolicyService {
 
         private final PolicyRepository policyRepository;
         private final ProductRepository productRepository;
-        private final UserProfileRepository profileRepository;
+        private final UserPlatformRepository profileRepository;
         private final QuoteRequestRepository quoteRepository;
-        private final AuditLogService auditLogService;
         private final PolicyMapper policyMapper;
+        private final com.thehalo.halobackend.mapper.quote.QuoteMapper quoteMapper;
 
         // List all policies owned by the current user — lightweight summary cards
         @Transactional(readOnly = true)
@@ -49,6 +52,51 @@ public class PolicyServiceImpl implements PolicyService {
                 return policyRepository.findByUserId(currentUserId())
                                 .stream().map(policyMapper::toSummaryDto).toList();
         }
+
+        @Transactional(readOnly = true)
+        public List<PolicySummaryResponse> getAllPolicies() {
+                return policyRepository.findAll().stream()
+                                .map(policyMapper::toSummaryDto).toList();
+        }
+
+        @Transactional(readOnly = true)
+        public List<com.thehalo.halobackend.dto.policy.response.PolicyApplicationResponse> getAdminApplications() {
+                // Return all quote requests as logs for the admin to monitor
+                return quoteRepository.findAll().stream()
+                                .map(quote -> {
+                                        var dto = quoteMapper.toApplicationDto(quote);
+                                        
+                                        // If quote was converted to policy, fetch the policy status
+                                        if (quote.getStatus() == QuoteStatus.ACCEPTED || 
+                                            quote.getStatus() == QuoteStatus.CONVERTED_TO_POLICY) {
+                                                policyRepository.findByProfileIdAndProductId(
+                                                        quote.getProfile().getId(), 
+                                                        quote.getProduct().getId()
+                                                ).stream()
+                                                .findFirst()
+                                                .ifPresent(policy -> {
+                                                        dto.setPolicyStatus(policy.getStatus());
+                                                        // Use policy's risk score if available, otherwise use quote's
+                                                        if (policy.getRiskScore() != null) {
+                                                                dto.setRiskScore(policy.getRiskScore());
+                                                        }
+                                                });
+                                        }
+                                        
+                                        return dto;
+                                }).toList();
+        }
+
+        @Transactional
+        public void approvePolicyApplication(Long id) {
+                // No longer used by admin UI but keeping service method for internal auto-approval if needed
+        }
+
+        @Transactional
+        public void rejectPolicyApplication(Long id, String reason) {
+                // No longer used by admin UI
+        }
+
 
         // Full detail of a specific policy — accessible by owner or admin
         @Transactional(readOnly = true)
@@ -63,16 +111,14 @@ public class PolicyServiceImpl implements PolicyService {
         public PolicyDetailResponse purchase(PurchasePolicyRequest request) {
                 Long userId = currentUserId();
                 Product product = productRepository.findById(request.getProductId())
-                                .orElseThrow(() -> new ResourceNotFoundException(
-                                                "Product not found: " + request.getProductId()));
+                                .orElseThrow(() -> new ProductNotFoundException(request.getProductId()));
 
                 if (!Boolean.TRUE.equals(product.getActive())) {
                         throw new ProductNotAvailableException(request.getProductId());
                 }
 
-                UserProfile profile = profileRepository.findByIdAndUserId(request.getProfileId(), userId)
-                                .orElseThrow(() -> new ResourceNotFoundException(
-                                                "Profile not found: " + request.getProfileId()));
+                UserPlatform profile = profileRepository.findByIdAndUserId(request.getProfileId(), userId)
+                                .orElseThrow(() -> new ProfileNotFoundException(request.getProfileId()));
 
                 // Prevent duplicate active policy for same profile+product combination
                 policyRepository.findByProfileIdAndProductIdAndStatus(
@@ -104,13 +150,11 @@ public class PolicyServiceImpl implements PolicyService {
                                 .premiumAmount(dynamicPremium)
                                 .startDate(LocalDate.now())
                                 .endDate(LocalDate.now().plusYears(1))
-                                .status(PolicyStatus.ACTIVE)
+                                .status(PolicyStatus.PENDING_PAYMENT)
                                 .renewalCount(0)
                                 .build();
 
                 Policy saved = policyRepository.save(policy);
-                auditLogService.logAction("POLICY", saved.getId().toString(), "CREATE",
-                                "Purchased new policy directly for product: " + product.getName());
                 return policyMapper.toDetailDto(saved);
         }
 
@@ -118,13 +162,13 @@ public class PolicyServiceImpl implements PolicyService {
         @Transactional
         public PolicyDetailResponse purchaseFromQuote(Long quoteId) {
                 QuoteRequest quote = quoteRepository.findById(quoteId)
-                                .orElseThrow(() -> new ResourceNotFoundException("Quote not found: " + quoteId));
+                                .orElseThrow(() -> new QuoteNotFoundException(quoteId));
 
                 if (!quote.getUser().getId().equals(currentUserId())) {
-                        throw new RuntimeException("Quote belongs to another user");
+                        throw new UnauthorizedPolicyAccessException(quoteId, currentUserId());
                 }
                 if (quote.getStatus() != QuoteStatus.APPROVED) {
-                        throw new RuntimeException(
+                        throw new InvalidPolicyStateException(
                                         "Quote must be APPROVED to purchase. Current status: "
                                                         + quote.getStatus().name());
                 }
@@ -156,15 +200,13 @@ public class PolicyServiceImpl implements PolicyService {
                                 .premiumAmount(quote.getOfferedPremium())
                                 .startDate(LocalDate.now())
                                 .endDate(LocalDate.now().plusYears(1))
-                                .status(PolicyStatus.ACTIVE)
+                                .status(PolicyStatus.PENDING_PAYMENT)
                                 .renewalCount(0)
                                 // Store underwriter who quoted it
                                 .underwriter(quote.getAssignedUnderwriter())
                                 .build();
 
                 Policy saved = policyRepository.save(policy);
-                auditLogService.logAction("POLICY", saved.getId().toString(), "CREATE",
-                                "Purchased policy from approved quote for product: " + product.getName());
                 return policyMapper.toDetailDto(saved);
         }
 
@@ -179,9 +221,27 @@ public class PolicyServiceImpl implements PolicyService {
                 }
                 policy.setStatus(PolicyStatus.CANCELLED);
                 Policy saved = policyRepository.save(policy);
-                auditLogService.logAction("POLICY", saved.getId().toString(), "CANCEL",
-                                "Cancelled policy: " + saved.getPolicyNumber());
                 return policyMapper.toSummaryDto(saved);
+        }
+
+        // Pay premium to activate a pending policy
+        @Transactional
+        public PolicyDetailResponse payPremium(Long policyId) {
+                Policy policy = policyRepository.findById(policyId)
+                                .orElseThrow(() -> new PolicyNotFoundException(policyId));
+
+                if (!policy.getUser().getId().equals(currentUserId())) {
+                        throw new UnauthorizedPolicyAccessException(policyId, currentUserId());
+                }
+                
+                if (policy.getStatus() != PolicyStatus.PENDING_PAYMENT) {
+                        throw new InvalidPolicyStateException("Policy is not pending payment. Current status: " + policy.getStatus());
+                }
+
+                policy.setStatus(PolicyStatus.ACTIVE);
+                Policy saved = policyRepository.save(policy);
+                
+                return policyMapper.toDetailDto(saved);
         }
 
         private Long currentUserId() {
@@ -191,6 +251,22 @@ public class PolicyServiceImpl implements PolicyService {
 
         private <T extends java.math.BigDecimal> T nullCoalesce(T val, T fallback) {
                 return val != null ? val : fallback;
+        }
+
+        // Helper methods for navigation visibility
+        @Override
+        @Transactional(readOnly = true)
+        public boolean hasActivePolicies() {
+                Long userId = currentUserId();
+                return policyRepository.existsByUserIdAndStatus(userId, PolicyStatus.ACTIVE);
+        }
+
+        @Override
+        @Transactional(readOnly = true)
+        public boolean hasPaidPremium() {
+                Long userId = currentUserId();
+                // Check if user has any policy with ACTIVE status (which means premium was paid)
+                return policyRepository.existsByUserIdAndStatus(userId, PolicyStatus.ACTIVE);
         }
 
 }

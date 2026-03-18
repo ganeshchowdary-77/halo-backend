@@ -1,7 +1,7 @@
 package com.thehalo.halobackend.mapper.iam;
 
 import com.thehalo.halobackend.dto.iam.response.StaffSummaryResponse;
-import com.thehalo.halobackend.model.profile.AppUser;
+import com.thehalo.halobackend.model.user.AppUser;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 

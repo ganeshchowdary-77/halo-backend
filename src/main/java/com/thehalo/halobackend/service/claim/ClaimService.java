@@ -12,11 +12,22 @@ public interface ClaimService {
 
     ClaimDetailResponse getDetail(Long claimId);
 
-    ClaimDetailResponse file(FileClaimRequest request);
+    ClaimDetailResponse file(FileClaimRequest request, List<org.springframework.web.multipart.MultipartFile> documents);
 
     ClaimDetailResponse approve(Long claimId, ReviewClaimRequest request);
 
     ClaimDetailResponse deny(Long claimId, ReviewClaimRequest request);
 
     List<ClaimSummaryResponse> getClaimQueue();
+
+    org.springframework.data.domain.Page<ClaimSummaryResponse> getClaimQueuePaginated(String search, com.thehalo.halobackend.enums.ClaimStatus status, org.springframework.data.domain.Pageable pageable);
+
+    List<ClaimSummaryResponse> getApprovedClaims();
+    
+    // Assignment methods
+    ClaimDetailResponse assignClaim(Long claimId);
+
+    ClaimDetailResponse releaseClaim(Long claimId);
+    
+    List<ClaimSummaryResponse> getAssignedClaims();
 }

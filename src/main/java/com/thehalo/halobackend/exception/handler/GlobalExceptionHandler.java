@@ -5,12 +5,12 @@ import com.thehalo.halobackend.exception.codes.ErrorCode;
 import com.thehalo.halobackend.exception.response.ApiErrorResponse;
 import com.thehalo.halobackend.exception.security.RateLimitExceededException;
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -19,7 +19,6 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestControllerAdvice
-@Slf4j
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(BaseException.class)
@@ -39,9 +38,6 @@ public class GlobalExceptionHandler {
                 .path(request.getRequestURI())
                 .correlationId(correlationId)
                 .build();
-
-        log.warn("Business exception [{}]: {} - {}", correlationId, code.name(), ex.getMessage());
-
         // Add Retry-After header for rate limiting
         if (ex instanceof RateLimitExceededException) {
             HttpHeaders headers = new HttpHeaders();
@@ -76,10 +72,27 @@ public class GlobalExceptionHandler {
                 .correlationId(correlationId)
                 .fieldErrors(fieldErrors)
                 .build();
-
-        log.warn("Validation error [{}]: {}", correlationId, fieldErrors);
-
         return ResponseEntity.badRequest().body(response);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleNoResourceFound(
+            NoResourceFoundException ex,
+            HttpServletRequest request) {
+
+        String path = request.getRequestURI();
+        String correlationId = UUID.randomUUID().toString();
+
+        ApiErrorResponse response = ApiErrorResponse.builder()
+                .success(false)
+                .message("The requested resource was not found: " + ex.getResourcePath())
+                .errorCode("NOT_FOUND")
+                .status(HttpStatus.NOT_FOUND.value())
+                .timestamp(LocalDateTime.now())
+                .path(path)
+                .correlationId(correlationId)
+                .build();
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
     @ExceptionHandler(Exception.class)
@@ -107,9 +120,6 @@ public class GlobalExceptionHandler {
                 .path(path)
                 .correlationId(correlationId)
                 .build();
-
-        log.error("Unexpected exception [{}]: ", correlationId, ex);
-
         return ResponseEntity.internalServerError().body(response);
     }
 }

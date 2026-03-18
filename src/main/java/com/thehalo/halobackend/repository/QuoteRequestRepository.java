@@ -20,6 +20,9 @@ public interface QuoteRequestRepository extends JpaRepository<QuoteRequest, Long
     // Find all by status (for Underwriter queue)
     List<QuoteRequest> findByStatus(QuoteStatus status);
 
+    // Find all by status (for Underwriter queue) (paginated)
+    Page<QuoteRequest> findByStatus(QuoteStatus status, Pageable pageable);
+
     // Find all assigned and in review queue (if needed)
     List<QuoteRequest> findByAssignedUnderwriterId(Long underwriterId);
 
@@ -37,6 +40,9 @@ public interface QuoteRequestRepository extends JpaRepository<QuoteRequest, Long
     @Query("SELECT q FROM QuoteRequest q WHERE q.assignedUnderwriter.id = :underwriterId ORDER BY q.reviewedAt DESC")
     Page<QuoteRequest> findByAssignedUnderwriterId(@Param("underwriterId") Long underwriterId, Pageable pageable);
 
+    // Find quotes assigned to specific underwriter and by status (paginated)
+    Page<QuoteRequest> findByAssignedUnderwriterIdAndStatus(Long assignedUnderwriterId, QuoteStatus status, Pageable pageable);
+
     // Find urgent unassigned quotes (older than cutoff time)
     @Query("SELECT q FROM QuoteRequest q WHERE q.assignedUnderwriter IS NULL AND q.status = 'PENDING' AND q.createdAt < :cutoff ORDER BY q.createdAt ASC")
     List<QuoteRequest> findUrgentUnassignedQuotes(@Param("cutoff") LocalDateTime cutoff);
@@ -49,9 +55,12 @@ public interface QuoteRequestRepository extends JpaRepository<QuoteRequest, Long
     @Query("SELECT COUNT(q) FROM QuoteRequest q WHERE q.assignedUnderwriter.id = :underwriterId AND q.status IN ('PENDING', 'IN_REVIEW')")
     int countActiveQuotesByUnderwriter(@Param("underwriterId") Long underwriterId);
 
-    // Count completed quotes today by underwriter
-    @Query("SELECT COUNT(q) FROM QuoteRequest q WHERE q.assignedUnderwriter.id = :underwriterId AND q.status = 'APPROVED' AND FUNCTION('DATE', q.updatedAt) = CURRENT_DATE")
-    int countCompletedQuotesToday(@Param("underwriterId") Long underwriterId);
+    @Query("SELECT COUNT(q) FROM QuoteRequest q WHERE q.assignedUnderwriter.id = :underwriterId AND q.status = 'APPROVED' AND q.updatedAt >= :startOfDay AND q.updatedAt < :endOfDay")
+    int countCompletedQuotesToday(@Param("underwriterId") Long underwriterId, @Param("startOfDay") LocalDateTime startOfDay, @Param("endOfDay") LocalDateTime endOfDay);
+
+    // Count completed quotes this week by underwriter
+    @Query("SELECT COUNT(q) FROM QuoteRequest q WHERE q.assignedUnderwriter.id = :underwriterId AND q.status IN ('APPROVED', 'REJECTED') AND q.updatedAt >= :startOfWeek")
+    int countCompletedQuotesThisWeek(@Param("underwriterId") Long underwriterId, @Param("startOfWeek") LocalDateTime startOfWeek);
 
     // Get average processing time for underwriter (returns minutes) - H2 compatible
     @Query("SELECT COALESCE(COUNT(q), 0) FROM QuoteRequest q WHERE q.assignedUnderwriter.id = :underwriterId AND q.status IN ('APPROVED', 'REJECTED') AND q.reviewedAt IS NOT NULL")
@@ -72,7 +81,19 @@ public interface QuoteRequestRepository extends JpaRepository<QuoteRequest, Long
     // Find quotes by user and status
     List<QuoteRequest> findByUserIdAndStatus(Long userId, QuoteStatus status);
 
-    // Find recent quotes for dashboard
-    @Query("SELECT q FROM QuoteRequest q ORDER BY q.createdAt DESC")
-    Page<QuoteRequest> findRecentQuotes(Pageable pageable);
+    // Search across user email, quote number, or product name with optional status filtering (paginated)
+    @Query("SELECT q FROM QuoteRequest q " +
+           "LEFT JOIN q.user u " +
+           "LEFT JOIN q.product p " +
+           "WHERE (:status IS NULL OR q.status = :status) AND " +
+           "(LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(q.quoteNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<QuoteRequest> findBySearchAndStatus(@Param("search") String search, @Param("status") QuoteStatus status, Pageable pageable);
+
+    // Count quotes by status
+    long countByStatus(QuoteStatus status);
+
+    // Count quotes by status created after a specific date
+    long countByStatusAndCreatedAtAfter(QuoteStatus status, LocalDateTime createdAt);
 }

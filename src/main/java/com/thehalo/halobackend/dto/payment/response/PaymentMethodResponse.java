@@ -1,10 +1,11 @@
 package com.thehalo.halobackend.dto.payment.response;
 
-import lombok.Builder;
-import lombok.Data;
+import lombok.*;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class PaymentMethodResponse {
 
     private Long id;

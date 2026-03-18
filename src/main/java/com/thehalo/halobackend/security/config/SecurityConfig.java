@@ -2,10 +2,10 @@ package com.thehalo.halobackend.security.config;
 
 import com.thehalo.halobackend.security.filter.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -54,7 +54,14 @@ public class SecurityConfig {
                         auth.requestMatchers("/api/v1/auth/**").permitAll();
                         
                         // Public Endpoints
-                        auth.requestMatchers("/api/v1/products/public").permitAll();
+                        auth.requestMatchers("/api/v1/public/**").permitAll();
+                        auth.requestMatchers("/api/v1/products/public/**").permitAll();
+                        
+                        // File uploads - allow public access for viewing
+                        auth.requestMatchers("/uploads/**").permitAll();
+                        auth.requestMatchers("/platforms/**").permitAll();
+                        auth.requestMatchers("/claims/**").permitAll();
+                        auth.requestMatchers("/policies/**").permitAll();
 
                         // OpenAPI / Swagger — always public
                         auth.requestMatchers("/v3/**", "/swagger-ui/**", "/swagger-ui.html").permitAll();

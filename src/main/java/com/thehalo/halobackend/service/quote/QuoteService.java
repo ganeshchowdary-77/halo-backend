@@ -13,8 +13,8 @@ public interface QuoteService {
     QuoteDetailResponse getDetail(Long quoteId);
 
     QuoteDetailResponse submit(SubmitQuoteRequest request);
+    
+    QuoteDetailResponse acceptQuote(Long quoteId);
 
-    List<QuoteSummaryResponse> getUnderwriterQueue();
-
-    QuoteDetailResponse reviewQuote(Long quoteId, ReviewQuoteRequest request, boolean approve);
+    QuoteDetailResponse updateStatus(Long quoteId, com.thehalo.halobackend.dto.quote.request.QuoteStatusUpdateRequest request);
 }

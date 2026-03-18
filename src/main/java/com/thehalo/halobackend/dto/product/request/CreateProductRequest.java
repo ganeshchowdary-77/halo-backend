@@ -38,4 +38,7 @@ public class CreateProductRequest {
     @NotNull
     @DecimalMin(value = "0.0", inclusive = false)
     private BigDecimal basePremium;
+
+    private String tagline;
+
 }

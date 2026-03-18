@@ -25,6 +25,7 @@ public class PolicyDetailResponse {
         private String productTagline;
 
         // Insured profile
+        private Long insuredProfileId;
         private String insuredProfileHandle;
         private String insuredPlatform;
 

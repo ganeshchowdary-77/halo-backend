@@ -1,7 +1,7 @@
 package com.thehalo.halobackend.security.service;
 
 import com.thehalo.halobackend.enums.RoleName;
-import com.thehalo.halobackend.model.profile.AppUser;
+import com.thehalo.halobackend.model.user.AppUser;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -17,12 +17,14 @@ public class CustomUserDetails implements UserDetails {
     private final String email;
     private final String password;
     private final RoleName role;
+    private final AppUser user;
 
     public CustomUserDetails(AppUser user) {
         this.userId = user.getId();
         this.email = user.getEmail();
         this.password = user.getPassword();
         this.role = user.getRole().getName();
+        this.user = user;
     }
 
     @Override
@@ -60,5 +62,9 @@ public class CustomUserDetails implements UserDetails {
     @Override
     public boolean isEnabled() {
         return true;
+    }
+
+    public AppUser getUser() {
+        return user;
     }
 }

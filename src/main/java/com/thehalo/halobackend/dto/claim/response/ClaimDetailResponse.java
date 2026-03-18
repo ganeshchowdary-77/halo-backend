@@ -47,6 +47,4 @@ public class ClaimDetailResponse {
 
         // Supporting documents uploaded with the claim
         private List<ClaimDocumentResponse> documents;
-        // Status change audit trail
-        private List<ClaimTimelineResponse> timeline;
 }

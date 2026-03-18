@@ -2,12 +2,13 @@ package com.thehalo.halobackend.service.underwriter;
 
 import com.thehalo.halobackend.model.policy.QuoteRequest;
 import com.thehalo.halobackend.dto.underwriter.response.QueueItemResponse;
+import com.thehalo.halobackend.mapper.underwriter.UnderwriterMapper;
 import com.thehalo.halobackend.repository.QuoteRequestRepository;
-import com.thehalo.halobackend.exception.business.QuoteNotFoundException;
+import com.thehalo.halobackend.exception.domain.quote.QuoteNotFoundException;
 import com.thehalo.halobackend.enums.Niche;
 import com.thehalo.halobackend.enums.QuoteStatus;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -21,29 +22,30 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
-@Transactional(readOnly = true)
 public class UnderwriterQueueService {
 
     private final QuoteRequestRepository quoteRepository;
     private final UnderwriterAssignmentService assignmentService;
+    private final UnderwriterMapper underwriterMapper;
 
-    /**
-     * Get available quotes for manual assignment (queue view)
-     */
+    // Get available quotes for manual assignment (queue view)
     public Page<QueueItemResponse> getAvailableQuotes(Pageable pageable) {
         Page<QuoteRequest> quotes = quoteRepository.findUnassignedQuotes(pageable);
         
-        return quotes.map(this::mapToQueueItem);
+        return quotes.map(quote -> {
+            QueueItemResponse item = underwriterMapper.toQueueItem(quote);
+            return item.toBuilder().priority(calculatePriority(quote)).build();
+        });
     }
 
-    /**
-     * Get quotes assigned to specific underwriter
-     */
+    // Get quotes assigned to specific underwriter
     public Page<QueueItemResponse> getAssignedQuotes(Long underwriterId, Pageable pageable) {
         Page<QuoteRequest> quotes = quoteRepository.findByAssignedUnderwriterId(underwriterId, pageable);
         
-        return quotes.map(this::mapToQueueItem);
+        return quotes.map(quote -> {
+            QueueItemResponse item = underwriterMapper.toQueueItem(quote);
+            return item.toBuilder().priority(calculatePriority(quote)).build();
+        });
     }
 
     /**
@@ -55,7 +57,10 @@ public class UnderwriterQueueService {
         List<QuoteRequest> urgentQuotes = quoteRepository.findUrgentUnassignedQuotes(urgentCutoff);
         
         return urgentQuotes.stream()
-            .map(this::mapToQueueItem)
+            .map(quote -> {
+                QueueItemResponse item = underwriterMapper.toQueueItem(quote);
+                return item.toBuilder().priority(calculatePriority(quote)).build();
+            })
             .collect(Collectors.toList());
     }
 
@@ -85,7 +90,7 @@ public class UnderwriterQueueService {
         quote.setReviewedAt(null);
         quoteRepository.save(quote);
         
-        log.info("Quote {} released back to queue by underwriter {}", quote.getQuoteNumber(), underwriterId);
+
         return true;
     }
 
@@ -94,7 +99,9 @@ public class UnderwriterQueueService {
      */
     public Map<String, Object> getUnderwriterStats(Long underwriterId) {
         int activeQuotes = quoteRepository.countActiveQuotesByUnderwriter(underwriterId);
-        int completedToday = quoteRepository.countCompletedQuotesToday(underwriterId);
+        LocalDateTime startOfDay = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
+        LocalDateTime endOfDay = startOfDay.plusDays(1);
+        int completedToday = quoteRepository.countCompletedQuotesToday(underwriterId, startOfDay, endOfDay);
         int avgProcessingTime = quoteRepository.getAvgProcessingTimeMinutes(underwriterId);
         
         return Map.of(
@@ -103,27 +110,6 @@ public class UnderwriterQueueService {
             "avgProcessingTimeMinutes", avgProcessingTime,
             "capacity", getUnderwriterCapacity(activeQuotes)
         );
-    }
-
-    private QueueItemResponse mapToQueueItem(QuoteRequest quote) {
-        return QueueItemResponse.builder()
-            .quoteId(quote.getId())
-            .quoteNumber(quote.getQuoteNumber()) // Include quote number for audit trail
-            .influencerName(quote.getUser().getFullName())
-            .influencerEmail(quote.getUser().getEmail())
-            .platform(quote.getProfile().getPlatform().getName().name())
-            .niche(quote.getProfile().getNiche().name())
-            .followerCount(quote.getProfile().getFollowerCount())
-            .requestedCoverage(quote.getProduct().getCoverageAmount())
-            .estimatedPremium(quote.getOfferedPremium() != null ? quote.getOfferedPremium() : BigDecimal.ZERO)
-            .priority(calculatePriority(quote))
-            .createdAt(quote.getCreatedAt())
-            .timeInQueue(java.time.Duration.between(quote.getCreatedAt(), LocalDateTime.now()).toMinutes())
-            .assignedUnderwriter(quote.getAssignedUnderwriter() != null ? 
-                quote.getAssignedUnderwriter().getFullName() : null)
-            .status(quote.getStatus().name())
-            .productName(quote.getProduct().getName())
-            .build();
     }
 
     private String calculatePriority(QuoteRequest quote) {

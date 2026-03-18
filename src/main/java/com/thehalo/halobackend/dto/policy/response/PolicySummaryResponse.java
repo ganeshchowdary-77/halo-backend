@@ -1,5 +1,6 @@
 package com.thehalo.halobackend.dto.policy.response;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.thehalo.halobackend.enums.PolicyStatus;
 import lombok.*;
 
@@ -19,8 +20,15 @@ public class PolicySummaryResponse {
         private PolicyStatus status;
         // Product name e.g. "Halo Elite"
         private String productName;
+        private Long insuredProfileId;
+        private String platformName;
+        private String insuredProfileHandle;
         private BigDecimal premiumAmount;
+        
+        @JsonFormat(pattern = "yyyy-MM-dd")
         private LocalDate startDate;
+        
+        @JsonFormat(pattern = "yyyy-MM-dd")
         private LocalDate endDate;
         // Whether policy can be renewed
         private Boolean renewalEligible;

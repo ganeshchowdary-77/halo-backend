@@ -10,18 +10,20 @@ import com.thehalo.halobackend.enums.BillingCycle;
 import com.thehalo.halobackend.enums.PolicyStatus;
 import com.thehalo.halobackend.enums.TransactionStatus;
 import com.thehalo.halobackend.enums.TransactionType;
-import com.thehalo.halobackend.exception.business.ResourceNotFoundException;
+import com.thehalo.halobackend.exception.domain.payment.InsufficientPaymentException;
+import com.thehalo.halobackend.exception.domain.payment.InvalidPaymentStateException;
+import com.thehalo.halobackend.exception.domain.payment.PaymentMethodNotFoundException;
+import com.thehalo.halobackend.exception.domain.payment.UnauthorizedPaymentAccessException;
+import com.thehalo.halobackend.exception.domain.policy.PolicyNotFoundException;
 import com.thehalo.halobackend.mapper.payment.PaymentMapper;
 import com.thehalo.halobackend.model.payment.PaymentMethod;
 import com.thehalo.halobackend.model.payment.Transaction;
 import com.thehalo.halobackend.model.policy.Policy;
-import com.thehalo.halobackend.model.policy.Product;
-import com.thehalo.halobackend.model.profile.AppUser;
+import com.thehalo.halobackend.model.user.AppUser;
 import com.thehalo.halobackend.repository.PaymentMethodRepository;
 import com.thehalo.halobackend.repository.PolicyRepository;
 import com.thehalo.halobackend.repository.TransactionRepository;
 import com.thehalo.halobackend.security.service.CustomUserDetails;
-import com.thehalo.halobackend.service.system.AuditLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -42,8 +44,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentMethodRepository paymentMethodRepository;
     private final TransactionRepository transactionRepository;
     private final PolicyRepository policyRepository;
-    private final AuditLogService auditLogService;
     private final PaymentMapper paymentMapper;
+    private final MockPaymentGateway mockPaymentGateway;
 
     @Override
     @Transactional
@@ -70,13 +72,10 @@ public class PaymentServiceImpl implements PaymentService {
                 .build();
 
         PaymentMethod saved = paymentMethodRepository.save(pm);
-        auditLogService.logAction("PAYMENT_METHOD", saved.getId().toString(), "CREATE",
-                "Added new card ending in " + saved.getCardLast4());
         return paymentMapper.toDto(saved);
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<PaymentMethodResponse> getMyPaymentMethods() {
         return paymentMethodRepository.findByUserId(currentUserId())
                 .stream().map(paymentMapper::toDto).toList();
@@ -86,15 +85,14 @@ public class PaymentServiceImpl implements PaymentService {
     @Transactional
     public void deletePaymentMethod(Long id) {
         PaymentMethod pm = paymentMethodRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Payment Method not found"));
+                .orElseThrow(() -> new PaymentMethodNotFoundException(id));
         if (!pm.getUser().getId().equals(currentUserId())) {
-            throw new RuntimeException("Unauthorized");
+            throw new UnauthorizedPaymentAccessException(id, currentUserId());
         }
         paymentMethodRepository.delete(pm);
     }
 
     @Override
-    @Transactional(readOnly = true)
     public PaymentSummaryResponse getPaymentSummary(Long policyId) {
         Policy policy = findPolicyOrThrow(policyId);
         verifyOwnership(policy);
@@ -125,26 +123,38 @@ public class PaymentServiceImpl implements PaymentService {
         verifyOwnership(policy);
 
         if (policy.getStatus() != PolicyStatus.PENDING_PAYMENT && policy.getStatus() != PolicyStatus.ACTIVE) {
-            throw new RuntimeException("Policy is not in a payable state");
+            throw new InvalidPaymentStateException(
+                "Policy " + policy.getPolicyNumber() + " is not in a payable state. Current status: " + policy.getStatus()
+            );
         }
 
         PaymentMethod pm = paymentMethodRepository.findById(request.getPaymentMethodId())
-                .orElseThrow(() -> new ResourceNotFoundException("Payment Method not found"));
+                .orElseThrow(() -> new PaymentMethodNotFoundException(request.getPaymentMethodId()));
         verifyOwnership(pm);
 
         PaymentSummaryResponse summary = getPaymentSummary(policyId);
         if (request.getAmount().compareTo(summary.getTotalAmountDue()) < 0) {
-            throw new RuntimeException("Payment amount must cover base premium plus late fees");
+            throw new InsufficientPaymentException(summary.getTotalAmountDue(), request.getAmount());
         }
 
-        // Issue mock transaction
+        // Process mock payment
+        MockPaymentGateway.PaymentResult paymentResult = mockPaymentGateway.processPayment(
+            request.getAmount(), 
+            pm.getCardLast4()
+        );
+        
+        if (!paymentResult.isSuccess()) {
+            throw new InvalidPaymentStateException("Payment processing failed: " + paymentResult.getMessage());
+        }
+
+        // Issue transaction with mock payment ID
         Transaction tx = Transaction.builder()
                 .policy(policy)
                 .amount(request.getAmount())
                 .transactionType(TransactionType.PREMIUM_PAYMENT)
                 .status(TransactionStatus.COMPLETED)
                 .paymentMethod(pm)
-                .referenceNumber("CHRG-" + UUID.randomUUID().toString().substring(0, 8))
+                .referenceNumber(paymentResult.getTransactionId())
                 .transactionDate(LocalDateTime.now())
                 .build();
 
@@ -156,29 +166,25 @@ public class PaymentServiceImpl implements PaymentService {
         if (policy.getStatus() == PolicyStatus.PENDING_PAYMENT) {
             policy.setStatus(PolicyStatus.ACTIVE);
             policy.setStartDate(LocalDate.now());
-            // Compute maturity based on product term
-            policy.setMaturityDate(LocalDate.now().plusMonths(policy.getProduct().getMaturityTermMonths()));
+            // Compute maturity based on default 12 month term
+            policy.setMaturityDate(LocalDate.now().plusMonths(12));
             policy.setNextPaymentDueDate(computeNextDueDate(LocalDate.now(), policy.getBillingCycle()));
         } else {
             policy.setNextPaymentDueDate(computeNextDueDate(policy.getNextPaymentDueDate(), policy.getBillingCycle()));
         }
 
         policyRepository.save(policy);
-        auditLogService.logAction("TRANSACTION", savedTx.getId().toString(), "PAYMENT",
-                "Processed premium payment for policy " + policy.getPolicyNumber());
 
         return paymentMapper.toDto(savedTx);
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<TransactionResponse> getMyTransactionHistory() {
         return transactionRepository.findByPolicyUserIdOrderByTransactionDateDesc(currentUserId())
                 .stream().map(paymentMapper::toDto).toList();
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<TransactionResponse> getPolicyTransactionHistory(Long policyId) {
         Policy policy = findPolicyOrThrow(policyId);
         verifyOwnership(policy);
@@ -187,27 +193,24 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public SurrenderQuoteResponse getSurrenderQuote(Long policyId) {
         Policy policy = findPolicyOrThrow(policyId);
         verifyOwnership(policy);
 
         if (policy.getStatus() != PolicyStatus.ACTIVE) {
-            throw new RuntimeException("Only active policies can be surrendered");
+            throw new InvalidPaymentStateException("Only active policies can be surrendered");
         }
 
-        Product product = policy.getProduct();
         BigDecimal totalPaid = policy.getTotalPremiumPaid();
-        BigDecimal surrenderValue = totalPaid.multiply(product.getSurrenderValueMultiplier()).setScale(2,
+        BigDecimal surrenderValueMultiplier = new BigDecimal("0.50"); // Default 50%
+        BigDecimal surrenderValue = totalPaid.multiply(surrenderValueMultiplier).setScale(2,
                 RoundingMode.HALF_UP);
 
         return SurrenderQuoteResponse.builder()
                 .policyId(policy.getId())
                 .policyNumber(policy.getPolicyNumber())
                 .totalPremiumPaid(totalPaid)
-                .guaranteedMaturityBenefit(
-                        product.getGuaranteedMaturityBenefit() != null ? product.getGuaranteedMaturityBenefit()
-                                : BigDecimal.ZERO)
+                .guaranteedMaturityBenefit(BigDecimal.ZERO)
                 .earlySurrenderValue(surrenderValue)
                 .warningMessage("Warning: Surrendering early will result in a loss of "
                         + totalPaid.subtract(surrenderValue) + " compared to premiums paid.")
@@ -221,7 +224,7 @@ public class PaymentServiceImpl implements PaymentService {
         verifyOwnership(policy);
 
         if (policy.getStatus() != PolicyStatus.ACTIVE) {
-            throw new RuntimeException("Only active policies can be surrendered");
+            throw new InvalidPaymentStateException("Only active policies can be surrendered");
         }
 
         SurrenderQuoteResponse quote = getSurrenderQuote(policyId);
@@ -241,9 +244,6 @@ public class PaymentServiceImpl implements PaymentService {
         policy.setEndDate(LocalDate.now());
         policyRepository.save(policy);
 
-        auditLogService.logAction("POLICY", policy.getId().toString(), "SURRENDER",
-                "Policy surrendered for value " + quote.getEarlySurrenderValue());
-
         return paymentMapper.toDto(savedTx);
     }
 
@@ -256,7 +256,7 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         long daysOverdue = ChronoUnit.DAYS.between(policy.getNextPaymentDueDate(), LocalDate.now());
-        BigDecimal dailyRate = policy.getProduct().getLatePaymentDailyInterestRate();
+        BigDecimal dailyRate = new BigDecimal("0.0005"); // Default 0.05%
         BigDecimal penaltyPercentage = dailyRate.multiply(new BigDecimal(daysOverdue));
         return policy.getPremiumAmount().multiply(penaltyPercentage).setScale(2, RoundingMode.HALF_UP);
     }
@@ -274,18 +274,18 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private Policy findPolicyOrThrow(Long id) {
-        return policyRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Policy not found"));
+        return policyRepository.findById(id).orElseThrow(() -> new PolicyNotFoundException(id));
     }
 
     private void verifyOwnership(Policy policy) {
         if (!policy.getUser().getId().equals(currentUserId())) {
-            throw new RuntimeException("Unauthorized API access to this policy.");
+            throw new UnauthorizedPaymentAccessException(policy.getId(), currentUserId());
         }
     }
 
     private void verifyOwnership(PaymentMethod pm) {
         if (!pm.getUser().getId().equals(currentUserId())) {
-            throw new RuntimeException("Unauthorized API access to this payment method.");
+            throw new UnauthorizedPaymentAccessException(pm.getId(), currentUserId());
         }
     }
 }

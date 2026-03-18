@@ -18,7 +18,7 @@ public class FileClaimRequest {
         @NotNull(message = "Policy ID is required")
         private Long policyId;
 
-        @NotNull(message = "Profile ID is required")
+        // Profile ID is now optional - we get it from the policy
         private Long profileId;
 
         @NotNull(message = "Incident date is required")

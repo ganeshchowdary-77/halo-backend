@@ -4,8 +4,8 @@ import com.thehalo.halobackend.enums.ClaimStatus;
 import com.thehalo.halobackend.enums.ExpenseType;
 import com.thehalo.halobackend.model.base.BaseEntity;
 import com.thehalo.halobackend.model.policy.Policy;
-import com.thehalo.halobackend.model.profile.AppUser;
-import com.thehalo.halobackend.model.profile.UserProfile;
+import com.thehalo.halobackend.model.user.AppUser;
+import com.thehalo.halobackend.model.user.UserPlatform;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SQLDelete;
@@ -47,7 +47,7 @@ public class Claim extends BaseEntity {
     /** The specific social media profile that was defamed */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "profile_id", nullable = false)
-    private UserProfile profile;
+    private UserPlatform profile;
 
     /** Influencer who filed the claim */
     @ManyToOne(fetch = FetchType.LAZY)
@@ -96,9 +96,4 @@ public class Claim extends BaseEntity {
     @OneToMany(mappedBy = "claim", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<ClaimDocument> documents = new ArrayList<>();
-
-    /** Full status change history for audit trail */
-    @OneToMany(mappedBy = "claim", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<ClaimTimeline> timeline = new ArrayList<>();
 }

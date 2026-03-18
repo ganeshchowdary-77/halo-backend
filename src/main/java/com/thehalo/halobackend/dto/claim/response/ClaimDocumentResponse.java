@@ -14,6 +14,7 @@ public class ClaimDocumentResponse {
 
         private Long id;
         private String fileName;
+        private String documentUrl; // URL to access the document
         // SCREENSHOT | LEGAL_DOCUMENT | INVOICE | NEWS_ARTICLE | OTHER
         private String documentType;
         private Long fileSizeBytes;

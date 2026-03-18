@@ -1,16 +1,15 @@
 package com.thehalo.halobackend.service.underwriter;
 
 import com.thehalo.halobackend.model.policy.QuoteRequest;
-import com.thehalo.halobackend.model.profile.AppUser;
+import com.thehalo.halobackend.model.user.AppUser;
 import com.thehalo.halobackend.enums.RoleName;
 import com.thehalo.halobackend.enums.QuoteStatus;
 import com.thehalo.halobackend.repository.AppUserRepository;
 import com.thehalo.halobackend.repository.QuoteRequestRepository;
-import com.thehalo.halobackend.exception.business.QuoteNotFoundException;
-import com.thehalo.halobackend.exception.business.UserNotFoundException;
+import com.thehalo.halobackend.exception.domain.quote.QuoteNotFoundException;
+import com.thehalo.halobackend.exception.domain.auth.UserNotFoundException;
 import com.thehalo.halobackend.exception.security.InsufficientRoleException;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,7 +21,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class UnderwriterAssignmentService {
 
     private final AppUserRepository userRepository;
@@ -41,14 +39,10 @@ public class UnderwriterAssignmentService {
                 .findActiveUnderwritersOrderByWorkload();
             
             if (availableUnderwriters.isEmpty()) {
-                log.warn("No available underwriters for quote assignment: {}", quote.getQuoteNumber());
                 return Optional.empty();
             }
 
             AppUser assignedUnderwriter = availableUnderwriters.get(0);
-            log.info("Assigned quote {} to underwriter {} (Round Robin)", 
-                quote.getQuoteNumber(), assignedUnderwriter.getEmail());
-            
             return Optional.of(assignedUnderwriter);
             
         } finally {
@@ -77,10 +71,6 @@ public class UnderwriterAssignmentService {
                 getActiveAssignmentCount(u1), 
                 getActiveAssignmentCount(u2)))
             .orElse(null);
-            
-        log.info("Assigned quote {} to skilled underwriter {} for platform {}", 
-            quote.getQuoteNumber(), assignedUnderwriter.getEmail(), platformName);
-            
         return Optional.ofNullable(assignedUnderwriter);
     }
 
@@ -104,24 +94,21 @@ public class UnderwriterAssignmentService {
                 .orElseThrow(() -> new QuoteNotFoundException("Quote not found: " + quoteId));
                 
             if (quote.getAssignedUnderwriter() != null) {
-                log.warn("Quote {} already assigned to underwriter {}", 
-                    quote.getQuoteNumber(), quote.getAssignedUnderwriter().getId());
                 return false;
             }
             
             AppUser underwriter = userRepository.findById(underwriterId)
                 .orElseThrow(() -> new UserNotFoundException("User not found: " + underwriterId));
                 
+            // Verify underwriter role
             if (!underwriter.getRole().getName().equals(RoleName.UNDERWRITER)) {
                 throw new InsufficientRoleException("User is not an underwriter");
             }
             
             quote.setAssignedUnderwriter(underwriter);
-            quote.setStatus(QuoteStatus.IN_REVIEW);
+            quote.setStatus(QuoteStatus.PENDING); // PENDING means under review by underwriter
             quote.setReviewedAt(LocalDateTime.now());
             quoteRepository.save(quote);
-            
-            log.info("Underwriter {} claimed quote {}", underwriterId, quote.getQuoteNumber());
             return true;
             
         } finally {
@@ -143,12 +130,9 @@ public class UnderwriterAssignmentService {
             assignUnderwriterRoundRobin(quote)
                 .ifPresent(underwriter -> {
                     quote.setAssignedUnderwriter(underwriter);
-                    quote.setStatus(QuoteStatus.IN_REVIEW);
+                    quote.setStatus(QuoteStatus.PENDING); // PENDING means under review by underwriter
                     quote.setReviewedAt(LocalDateTime.now());
                     quoteRepository.save(quote);
-                    
-                    log.info("Auto-assigned expired quote {} to underwriter {}", 
-                        quote.getQuoteNumber(), underwriter.getId());
                 });
         }
     }

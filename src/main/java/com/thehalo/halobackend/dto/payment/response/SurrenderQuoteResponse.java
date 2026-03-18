@@ -1,10 +1,11 @@
 package com.thehalo.halobackend.dto.payment.response;
 
-import lombok.Builder;
-import lombok.Data;
+import lombok.*;
 
 import java.math.BigDecimal;
 
+@NoArgsConstructor
+@AllArgsConstructor
 @Data
 @Builder
 public class SurrenderQuoteResponse {
