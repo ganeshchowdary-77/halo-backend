@@ -39,21 +39,21 @@ public class Product extends BaseEntity {
     @Column(nullable = false)
     private Boolean coveredLegal;
 
-    @Column(name = "covered_pr", nullable = false)
-    private Boolean coveredPR;
+    @Column(name = "covered_reputation", nullable = false)
+    private Boolean coveredReputation;
 
-    @Column(nullable = false)
-    private Boolean coveredMonitoring;
+    @Column(name = "covered_cyber", nullable = false)
+    private Boolean coveredCyber;
 
     // Coverage Limits
     @Column(precision = 19, scale = 2)
     private BigDecimal coverageLimitLegal;
 
-    @Column(name = "coverage_limit_pr", precision = 19, scale = 2)
-    private BigDecimal coverageLimitPR;
+    @Column(name = "coverage_limit_reputation", precision = 19, scale = 2)
+    private BigDecimal coverageLimitReputation;
 
-    @Column(precision = 19, scale = 2)
-    private BigDecimal coverageLimitMonitoring;
+    @Column(name = "coverage_limit_cyber", precision = 19, scale = 2)
+    private BigDecimal coverageLimitCyber;
 
     // Premium
     @Column(nullable = false, precision = 19, scale = 2)
@@ -69,11 +69,11 @@ public class Product extends BaseEntity {
         if (coverageLimitLegal != null) {
             total = total.add(coverageLimitLegal);
         }
-        if (coverageLimitPR != null) {
-            total = total.add(coverageLimitPR);
+        if (coverageLimitReputation != null) {
+            total = total.add(coverageLimitReputation);
         }
-        if (coverageLimitMonitoring != null) {
-            total = total.add(coverageLimitMonitoring);
+        if (coverageLimitCyber != null) {
+            total = total.add(coverageLimitCyber);
         }
         return total;
     }

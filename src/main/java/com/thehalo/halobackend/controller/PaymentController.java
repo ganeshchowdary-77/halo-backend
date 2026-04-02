@@ -6,9 +6,10 @@ import com.thehalo.halobackend.dto.payment.request.AddPaymentMethodRequest;
 import com.thehalo.halobackend.dto.payment.request.ProcessPaymentRequest;
 import com.thehalo.halobackend.dto.payment.response.PaymentMethodResponse;
 import com.thehalo.halobackend.dto.payment.response.PaymentSummaryResponse;
-import com.thehalo.halobackend.dto.payment.response.SurrenderQuoteResponse;
+import com.thehalo.halobackend.dto.payment.response.SurrenderValueResponse;
 import com.thehalo.halobackend.dto.payment.response.TransactionResponse;
 import com.thehalo.halobackend.service.payment.PaymentService;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -78,10 +79,12 @@ public class PaymentController {
 
     // --- Surrender ---
 
-    @GetMapping("/policies/{policyId}/surrender-quote")
+    @GetMapping("/policy/{policyId}/surrender-value")
+    @Operation(summary = "Get surrender value", description = "Calculate the potential surrender value for a policy")
     @PreAuthorize("hasRole('INFLUENCER')")
-    public ResponseEntity<HaloApiResponse<SurrenderQuoteResponse>> getSurrenderQuote(@PathVariable Long policyId) {
-        return ResponseFactory.success(paymentService.getSurrenderQuote(policyId), "Surrender quote generated");
+    public ResponseEntity<?> getSurrenderValue(@PathVariable Long policyId) {
+        SurrenderValueResponse result = paymentService.getSurrenderValue(policyId);
+        return ResponseFactory.success(result, "Surrender value calculated successfully");
     }
 
     @PostMapping("/policies/{policyId}/surrender")

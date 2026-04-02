@@ -27,13 +27,13 @@ public class ProductDetailResponse {
         // Maximum payout for legal defence claims
         private BigDecimal coverageLimitLegal;
 
-        private Boolean coveragePR;
+        private Boolean coverageReputation;
         // Maximum payout for PR crisis management
-        private BigDecimal coverageLimitPR;
+        private BigDecimal coverageLimitReputation;
 
-        private Boolean coverageMonitoring;
-        // Maximum payout for reputational monitoring services
-        private BigDecimal coverageLimitMonitoring;
+        private Boolean coverageCyber;
+        // Maximum payout for cyber recovery services
+        private BigDecimal coverageLimitCyber;
 
         // Sum of all sub-limits
         private BigDecimal totalCoverageLimit;

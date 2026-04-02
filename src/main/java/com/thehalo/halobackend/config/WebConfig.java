@@ -12,20 +12,9 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // Serve uploaded files from the uploads directory
-        registry.addResourceHandler("/uploads/**")
-                .addResourceLocations("file:uploads/");
-        
-        // Serve platform documents
-        registry.addResourceHandler("/platforms/**")
-                .addResourceLocations("file:uploads/platforms/");
-        
-        // Serve claim documents
-        registry.addResourceHandler("/claims/**")
-                .addResourceLocations("file:uploads/claims/");
-        
-        // Serve policy documents
-        registry.addResourceHandler("/policies/**")
-                .addResourceLocations("file:uploads/policies/");
+        // SECURITY: All uploaded files (platform docs, claims, policies) are served
+        // exclusively through the JWT-authenticated FileController at /api/v1/files/download/**.
+        // Static resource handlers have been intentionally removed to prevent
+        // unauthenticated access to sensitive documents via direct URL.
     }
 }

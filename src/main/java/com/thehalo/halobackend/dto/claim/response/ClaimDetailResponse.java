@@ -44,6 +44,10 @@ public class ClaimDetailResponse {
         // Insured profile
         private String profileHandle;
         private String profilePlatform;
+        
+        // User who filed the claim
+        private Long filedById;
+        private String filedByEmail;
 
         // Supporting documents uploaded with the claim
         private List<ClaimDocumentResponse> documents;

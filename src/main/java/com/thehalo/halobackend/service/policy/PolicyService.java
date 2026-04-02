@@ -1,36 +1,29 @@
 package com.thehalo.halobackend.service.policy;
 
 import com.thehalo.halobackend.dto.policy.request.PurchasePolicyRequest;
+import com.thehalo.halobackend.dto.policy.response.PolicyApplicationResponse;
 import com.thehalo.halobackend.dto.policy.response.PolicyDetailResponse;
 import com.thehalo.halobackend.dto.policy.response.PolicySummaryResponse;
 
 import java.util.List;
 
 public interface PolicyService {
-        List<PolicySummaryResponse> getMyPolicies();
+    List<PolicySummaryResponse> getMyPolicies();
 
-        PolicyDetailResponse getDetail(Long policyId);
+    PolicyDetailResponse getDetail(Long policyId);
 
-        PolicyDetailResponse purchase(PurchasePolicyRequest request);
+    PolicyDetailResponse purchase(PurchasePolicyRequest request);
 
-        PolicyDetailResponse purchaseFromQuote(Long quoteId);
+    PolicyDetailResponse payPremium(Long policyId);
 
-        PolicyDetailResponse payPremium(Long policyId);
+    PolicySummaryResponse cancel(Long policyId);
 
-        PolicySummaryResponse cancel(Long policyId);
+    List<PolicySummaryResponse> getAllPolicies();
 
-        List<PolicySummaryResponse> getAllPolicies();
+    List<PolicyApplicationResponse> getAdminApplications();
 
-        List<com.thehalo.halobackend.dto.policy.response.PolicyApplicationResponse> getAdminApplications();
+    // Helper methods for navigation visibility
+    boolean hasActivePolicies();
 
-        void approvePolicyApplication(Long id);
-
-        void rejectPolicyApplication(Long id, String reason);
-
-
-        // Helper methods for navigation visibility
-        boolean hasActivePolicies();
-
-        boolean hasPaidPremium();
-
+    boolean hasPaidPremium();
 }

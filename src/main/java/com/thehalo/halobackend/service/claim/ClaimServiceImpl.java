@@ -35,6 +35,7 @@ public class ClaimServiceImpl implements ClaimService {
     private final ClaimRepository claimRepository;
     private final PolicyRepository policyRepository;
     private final UserPlatformRepository profileRepository;
+    private final ClaimDocumentService claimDocumentService;
 
     private final ClaimMapper claimMapper;
     // Influencer: list their own claims
@@ -181,6 +182,52 @@ public class ClaimServiceImpl implements ClaimService {
         return claimMapper.toDetailDto(saved);
     }
 
+    // Officer: request more documents
+    @Transactional
+    public ClaimDetailResponse requestDocuments(Long claimId, ReviewClaimRequest request) {
+        Claim claim = findOrThrow(claimId);
+        
+        if (claim.getStatus() != ClaimStatus.UNDER_REVIEW) {
+            throw new ClaimNotModifiableException(claimId, "Only UNDER_REVIEW claims can be marked for more documents");
+        }
+
+        claim.setStatus(ClaimStatus.PENDING_INFORMATION);
+        claim.setOfficerComments(request.getOfficerComments());
+        
+        Claim saved = claimRepository.save(claim);
+        return claimMapper.toDetailDto(saved);
+    }
+
+    // Influencer: append documents
+    @Transactional
+    public ClaimDetailResponse uploadAdditionalDocuments(Long claimId, List<org.springframework.web.multipart.MultipartFile> documents) {
+        Claim claim = findOrThrow(claimId);
+        
+        if (claim.getStatus() != ClaimStatus.PENDING_INFORMATION && claim.getStatus() != ClaimStatus.SUBMITTED) {
+            throw new ClaimNotModifiableException(claimId, "Can only append documents to pending or submitted claims");
+        }
+
+        Long currentUserId = currentUserId();
+        if (!claim.getFiledBy().getId().equals(currentUserId)) {
+            throw new com.thehalo.halobackend.exception.business.BusinessRuleViolationException(
+                    "You are not authorized to append documents to this claim"
+            );
+        }
+
+        if (documents != null && !documents.isEmpty()) {
+            documents.forEach(file -> claimDocumentService.uploadDocument(claimId, file, "OTHER"));
+        }
+
+        // Return the claim to UNDER_REVIEW so the officer knows it was updated
+        if (claim.getStatus() == ClaimStatus.PENDING_INFORMATION) {
+            claim.setStatus(ClaimStatus.UNDER_REVIEW);
+            claim.setOfficerComments(null); // Clear the request note
+        }
+
+        Claim saved = claimRepository.save(claim);
+        return claimMapper.toDetailDto(saved);
+    }
+
     // Claims Officer: queue of all submitted claims awaiting review
     @Transactional(readOnly = true)
     public List<ClaimSummaryResponse> getClaimQueue() {
@@ -270,6 +317,26 @@ public class ClaimServiceImpl implements ClaimService {
         AppUser officer = new AppUser();
         officer.setId(currentUserId());
         return officer;
+    }
+
+    // Search claims by user name (for Claims Officers)
+    @Override
+    @Transactional(readOnly = true)
+    public List<ClaimSummaryResponse> searchClaimsByUserName(String userName) {
+        return claimRepository.findByUserName(userName)
+                .stream()
+                .map(claimMapper::toSummaryDto)
+                .toList();
+    }
+
+    // Get user claim history (for Claims Officers)
+    @Override
+    @Transactional(readOnly = true)
+    public List<ClaimSummaryResponse> getUserClaimHistory(Long userId) {
+        return claimRepository.findByFiledById(userId)
+                .stream()
+                .map(claimMapper::toSummaryDto)
+                .toList();
     }
 
 }

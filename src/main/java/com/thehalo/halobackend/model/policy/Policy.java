@@ -1,6 +1,5 @@
 package com.thehalo.halobackend.model.policy;
 
-import com.thehalo.halobackend.enums.BillingCycle;
 import com.thehalo.halobackend.enums.PolicyStatus;
 import com.thehalo.halobackend.model.base.BaseEntity;
 import com.thehalo.halobackend.model.user.AppUser;
@@ -14,9 +13,11 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
- * Represents an active insurance policy purchased by an influencer for a
- * specific
- * social media profile on a given product.
+ * Represents a monthly insurance policy purchased by an influencer
+ * for a specific social media profile on a given product.
+ *
+ * Business model: Monthly billing only. Policy renews each month
+ * upon premium payment. Coverage starts from day of application approval.
  */
 @Entity
 @Table(name = "policies")
@@ -71,15 +72,7 @@ public class Policy extends BaseEntity {
     @Builder.Default
     private PolicyStatus status = PolicyStatus.PENDING_PAYMENT;
 
-    // Advanced Ledger Fields
-    @Column(nullable = true)
-    private LocalDate maturityDate;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    @Builder.Default
-    private BillingCycle billingCycle = BillingCycle.ANNUAL;
-
+    /** Next monthly payment due date */
     @Column(nullable = true)
     private LocalDate nextPaymentDueDate;
 
@@ -90,7 +83,7 @@ public class Policy extends BaseEntity {
     /** Risk score from Underwriter at time of issuance (0-100) */
     private Integer riskScore;
 
-    /** How many times this policy has been renewed */
+    /** How many times this policy has been renewed (months paid) */
     @Builder.Default
     @Column(nullable = false)
     private Integer renewalCount = 0;

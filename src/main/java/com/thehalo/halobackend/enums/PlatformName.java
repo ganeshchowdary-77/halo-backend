@@ -1,5 +1,8 @@
 package com.thehalo.halobackend.enums;
 
+/**
+ * Major social media platforms supported by Halo insurance.
+ */
 public enum PlatformName {
     INSTAGRAM,
     YOUTUBE,
@@ -7,7 +10,5 @@ public enum PlatformName {
     LINKEDIN,
     FACEBOOK,
     SNAPCHAT,
-    TIKTOK,
-    PODCAST,
-    OTHERS
+    TIKTOK
 }

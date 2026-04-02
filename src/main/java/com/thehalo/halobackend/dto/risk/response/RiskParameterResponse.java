@@ -1,6 +1,5 @@
 package com.thehalo.halobackend.dto.risk.response;
 
-import com.thehalo.halobackend.enums.Niche;
 import lombok.Data;
 
 import java.math.BigDecimal;

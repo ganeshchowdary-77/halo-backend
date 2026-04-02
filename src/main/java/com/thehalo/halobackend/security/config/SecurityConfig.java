@@ -2,7 +2,6 @@ package com.thehalo.halobackend.security.config;
 
 import com.thehalo.halobackend.security.filter.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -56,12 +55,9 @@ public class SecurityConfig {
                         // Public Endpoints
                         auth.requestMatchers("/api/v1/public/**").permitAll();
                         auth.requestMatchers("/api/v1/products/public/**").permitAll();
+                        auth.requestMatchers("/api/v1/ai/chat/public").permitAll();
                         
-                        // File uploads - allow public access for viewing
-                        auth.requestMatchers("/uploads/**").permitAll();
-                        auth.requestMatchers("/platforms/**").permitAll();
-                        auth.requestMatchers("/claims/**").permitAll();
-                        auth.requestMatchers("/policies/**").permitAll();
+                        // File uploads - removed public access, now handled securely via /api/v1/files/download/**
 
                         // OpenAPI / Swagger — always public
                         auth.requestMatchers("/v3/**", "/swagger-ui/**", "/swagger-ui.html").permitAll();

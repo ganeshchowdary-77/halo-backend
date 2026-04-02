@@ -22,8 +22,8 @@ public interface ProductMapper {
     // Public product response for landing page
     @Mapping(target = "coverageAmount", expression = "java(product.getCoverageAmount())")
     @Mapping(target = "coveredLegal", source = "coveredLegal")
-    @Mapping(target = "coveredPR", source = "coveredPR")
-    @Mapping(target = "coveredMonitoring", source = "coveredMonitoring")
+    @Mapping(target = "coveredReputation", source = "coveredReputation")
+    @Mapping(target = "coveredCyber", source = "coveredCyber")
     @Mapping(target = "features", ignore = true)
     @Mapping(target = "popular", constant = "false")
     @Mapping(target = "marketingMessage", source = "tagline")
@@ -31,15 +31,15 @@ public interface ProductMapper {
 
     // Summary projection: rename coveredX -> coverageX to match DTO field names
     @Mapping(target = "coverageLegal", source = "coveredLegal")
-    @Mapping(target = "coveragePR", source = "coveredPR")
-    @Mapping(target = "coverageMonitoring", source = "coveredMonitoring")
+    @Mapping(target = "coverageReputation", source = "coveredReputation")
+    @Mapping(target = "coverageCyber", source = "coveredCyber")
     @Mapping(target = "keyFeatures", ignore = true)
     ProductSummaryResponse toSummary(Product product);
 
     // Detail projection: same renames + computed totalCoverageLimit
     @Mapping(target = "coverageLegal", source = "coveredLegal")
-    @Mapping(target = "coveragePR", source = "coveredPR")
-    @Mapping(target = "coverageMonitoring", source = "coveredMonitoring")
+    @Mapping(target = "coverageReputation", source = "coveredReputation")
+    @Mapping(target = "coverageCyber", source = "coveredCyber")
     @Mapping(target = "totalCoverageLimit", expression = "java(sumLimits(product))")
     @Mapping(target = "coverageAmount", expression = "java(sumLimits(product))")
     @Mapping(target = "activePolicyCount", ignore = true)
@@ -63,8 +63,8 @@ public interface ProductMapper {
     default BigDecimal sumLimits(Product p) {
         BigDecimal zero = BigDecimal.ZERO;
         BigDecimal legal = p.getCoverageLimitLegal() != null ? p.getCoverageLimitLegal() : zero;
-        BigDecimal pr = p.getCoverageLimitPR() != null ? p.getCoverageLimitPR() : zero;
-        BigDecimal mon = p.getCoverageLimitMonitoring() != null ? p.getCoverageLimitMonitoring() : zero;
-        return legal.add(pr).add(mon);
+        BigDecimal rep = p.getCoverageLimitReputation() != null ? p.getCoverageLimitReputation() : zero;
+        BigDecimal cyb = p.getCoverageLimitCyber() != null ? p.getCoverageLimitCyber() : zero;
+        return legal.add(rep).add(cyb);
     }
 }

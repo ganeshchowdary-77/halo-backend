@@ -18,6 +18,10 @@ public interface ClaimService {
 
     ClaimDetailResponse deny(Long claimId, ReviewClaimRequest request);
 
+    ClaimDetailResponse requestDocuments(Long claimId, ReviewClaimRequest request);
+
+    ClaimDetailResponse uploadAdditionalDocuments(Long claimId, List<org.springframework.web.multipart.MultipartFile> documents);
+
     List<ClaimSummaryResponse> getClaimQueue();
 
     org.springframework.data.domain.Page<ClaimSummaryResponse> getClaimQueuePaginated(String search, com.thehalo.halobackend.enums.ClaimStatus status, org.springframework.data.domain.Pageable pageable);
@@ -30,4 +34,9 @@ public interface ClaimService {
     ClaimDetailResponse releaseClaim(Long claimId);
     
     List<ClaimSummaryResponse> getAssignedClaims();
+    
+    // Search and analytics methods for Claims Officers
+    List<ClaimSummaryResponse> searchClaimsByUserName(String userName);
+    
+    List<ClaimSummaryResponse> getUserClaimHistory(Long userId);
 }

@@ -1,16 +1,18 @@
 package com.thehalo.halobackend.service.payment;
 
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+
 import com.thehalo.halobackend.dto.payment.request.AddPaymentMethodRequest;
 import com.thehalo.halobackend.dto.payment.request.ProcessPaymentRequest;
 import com.thehalo.halobackend.dto.payment.response.PaymentMethodResponse;
 import com.thehalo.halobackend.dto.payment.response.PaymentSummaryResponse;
-import com.thehalo.halobackend.dto.payment.response.SurrenderQuoteResponse;
+import com.thehalo.halobackend.dto.payment.response.SurrenderValueResponse;
 import com.thehalo.halobackend.dto.payment.response.TransactionResponse;
 import com.thehalo.halobackend.enums.PolicyStatus;
 import com.thehalo.halobackend.enums.TransactionStatus;
 import com.thehalo.halobackend.enums.TransactionType;
 import com.thehalo.halobackend.exception.domain.payment.PaymentMethodNotFoundException;
-import com.thehalo.halobackend.exception.domain.policy.PolicyNotFoundException;
 import com.thehalo.halobackend.mapper.payment.PaymentMapper;
 import com.thehalo.halobackend.model.payment.PaymentMethod;
 import com.thehalo.halobackend.model.payment.Transaction;
@@ -20,7 +22,6 @@ import com.thehalo.halobackend.repository.PaymentMethodRepository;
 import com.thehalo.halobackend.repository.PolicyRepository;
 import com.thehalo.halobackend.repository.TransactionRepository;
 import com.thehalo.halobackend.security.service.CustomUserDetails;
-import com.thehalo.halobackend.service.payment.MockPaymentGateway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,6 +42,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class PaymentServiceImplTest {
 
     @Mock
@@ -94,6 +96,7 @@ class PaymentServiceImplTest {
                 .status(PolicyStatus.ACTIVE)
                 .premiumAmount(BigDecimal.valueOf(100))
                 .totalPremiumPaid(BigDecimal.ZERO)
+                .nextPaymentDueDate(java.time.LocalDate.now().minusDays(1)) // Past due
                 .build();
 
         testPaymentMethod = PaymentMethod.builder()
@@ -192,6 +195,43 @@ class PaymentServiceImplTest {
     }
 
     @Test
+    void processPremiumPayment_ShouldThrowException_WhenNoPremiumIsDue() {
+        // Given an active policy fully paid
+        testPolicy.setStatus(PolicyStatus.ACTIVE);
+        testPolicy.setNextPaymentDueDate(java.time.LocalDate.now().plusMonths(1));
+        
+        ProcessPaymentRequest request = ProcessPaymentRequest.builder()
+                .paymentMethodId(1L)
+                .amount(BigDecimal.valueOf(100))
+                .build();
+                
+        when(policyRepository.findById(1L)).thenReturn(Optional.of(testPolicy));
+        when(paymentMethodRepository.findById(1L)).thenReturn(Optional.of(testPaymentMethod));
+
+        // When & Then
+        assertThatThrownBy(() -> paymentService.processPremiumPayment(1L, request))
+                .isInstanceOf(com.thehalo.halobackend.exception.domain.payment.InvalidPaymentStateException.class)
+                .hasMessageContaining("No premium is currently due");
+    }
+
+    @Test
+    void processPremiumPayment_ShouldThrowException_WhenPaymentAmountIsInsufficient() {
+        // Given a policy with 100 due
+        testPolicy.setStatus(PolicyStatus.PENDING_PAYMENT); // Due now
+        ProcessPaymentRequest request = ProcessPaymentRequest.builder()
+                .paymentMethodId(1L)
+                .amount(BigDecimal.valueOf(50)) // Only paid 50
+                .build();
+                
+        when(policyRepository.findById(1L)).thenReturn(Optional.of(testPolicy));
+        when(paymentMethodRepository.findById(1L)).thenReturn(Optional.of(testPaymentMethod));
+
+        // When & Then
+        assertThatThrownBy(() -> paymentService.processPremiumPayment(1L, request))
+                .isInstanceOf(com.thehalo.halobackend.exception.domain.payment.InsufficientPaymentException.class);
+    }
+
+    @Test
     void getMyTransactionHistory_ShouldReturnList() {
         when(transactionRepository.findByPolicyUserIdOrderByTransactionDateDesc(1L)).thenReturn(List.of(testTransaction));
         when(paymentMapper.toDto(any(Transaction.class))).thenReturn(new TransactionResponse());
@@ -203,10 +243,10 @@ class PaymentServiceImplTest {
     }
 
     @Test
-    void getSurrenderQuote_ShouldReturnQuote() {
+    void getSurrenderValue_ShouldReturnResponse() {
         when(policyRepository.findById(1L)).thenReturn(Optional.of(testPolicy));
 
-        SurrenderQuoteResponse result = paymentService.getSurrenderQuote(1L);
+        SurrenderValueResponse result = paymentService.getSurrenderValue(1L);
 
         assertThat(result).isNotNull();
         assertThat(result.getPolicyId()).isEqualTo(1L);

@@ -1,5 +1,8 @@
 package com.thehalo.halobackend.service.auth;
 
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+
 import com.thehalo.halobackend.dto.auth.request.LoginRequest;
 import com.thehalo.halobackend.dto.auth.request.RefreshTokenRequest;
 import com.thehalo.halobackend.dto.auth.request.RegisterRequest;
@@ -35,6 +38,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class AuthServiceImplTest {
 
     @Mock

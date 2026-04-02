@@ -1,9 +1,9 @@
 package com.thehalo.halobackend.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.thehalo.halobackend.dto.policy.request.PurchasePolicyRequest;
-import com.thehalo.halobackend.dto.policy.response.PolicyDetailResponse;
-import com.thehalo.halobackend.dto.policy.response.PolicySummaryResponse;
+import com.thehalo.halobackend.dto.policy.request.SubmitPolicyApplicationRequest;
+import com.thehalo.halobackend.dto.policy.response.PolicyApplicationDetailResponse;
+import com.thehalo.halobackend.service.policy.PolicyApplicationService;
 import com.thehalo.halobackend.service.policy.PolicyService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,9 +23,18 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.thehalo.halobackend.security.util.JwtUtil;
+import com.thehalo.halobackend.security.service.CustomUserDetailsService;
+
 @WebMvcTest(PolicyController.class)
 @AutoConfigureMockMvc(addFilters = false)
 class PolicyControllerTest {
+
+    @MockBean
+    private JwtUtil jwtUtil;
+
+    @MockBean
+    private CustomUserDetailsService customUserDetailsService;
 
     @Autowired
     private MockMvc mockMvc;
@@ -36,12 +45,15 @@ class PolicyControllerTest {
     @MockBean
     private PolicyService policyService;
 
+    @MockBean
+    private PolicyApplicationService applicationService;
+
     @Test
     @WithMockUser(roles = "INFLUENCER")
-    void getMyPolicies_ShouldReturnPolicies() throws Exception {
-        when(policyService.getMyPolicies()).thenReturn(List.of(new PolicySummaryResponse()));
+    void getMyApplications_ShouldReturnApplications() throws Exception {
+        when(applicationService.getMyApplications()).thenReturn(List.of(new PolicyApplicationDetailResponse()));
 
-        mockMvc.perform(get("/api/v1/policies"))
+        mockMvc.perform(get("/api/v1/policies/applications"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data").isArray());
@@ -49,26 +61,15 @@ class PolicyControllerTest {
 
     @Test
     @WithMockUser(roles = "INFLUENCER")
-    void getDetail_ShouldReturnPolicyDetail() throws Exception {
-        when(policyService.getDetail(anyLong())).thenReturn(new PolicyDetailResponse());
+    void applyForPolicy_ShouldCreateApplication() throws Exception {
+        SubmitPolicyApplicationRequest request = new SubmitPolicyApplicationRequest();
+        request.setProductId(1L);
+        request.setProfileId(1L);
 
-        mockMvc.perform(get("/api/v1/policies/1"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
-    }
+        when(applicationService.submitApplication(any(SubmitPolicyApplicationRequest.class)))
+                .thenReturn(new PolicyApplicationDetailResponse());
 
-    @Test
-    @WithMockUser(roles = "INFLUENCER")
-    void purchase_ShouldCreatePolicy() throws Exception {
-        PurchasePolicyRequest request = PurchasePolicyRequest.builder()
-                .productId(1L)
-                .profileId(1L)
-                .build();
-
-        when(policyService.purchase(any(PurchasePolicyRequest.class)))
-                .thenReturn(new PolicyDetailResponse());
-
-        mockMvc.perform(post("/api/v1/policies/purchase")
+        mockMvc.perform(post("/api/v1/policies/apply")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -77,40 +78,10 @@ class PolicyControllerTest {
 
     @Test
     @WithMockUser(roles = "INFLUENCER")
-    void purchaseFromQuote_ShouldCreatePolicy() throws Exception {
-        when(policyService.purchaseFromQuote(anyLong())).thenReturn(new PolicyDetailResponse());
+    void getApplicationDetail_ShouldReturnApplicationDetail() throws Exception {
+        when(applicationService.getApplicationDetail(anyLong())).thenReturn(new PolicyApplicationDetailResponse());
 
-        mockMvc.perform(post("/api/v1/policies/purchase/quote/1"))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.success").value(true));
-    }
-
-    @Test
-    @WithMockUser(roles = "INFLUENCER")
-    void cancel_ShouldCancelPolicy() throws Exception {
-        when(policyService.cancel(anyLong())).thenReturn(new PolicySummaryResponse());
-
-        mockMvc.perform(patch("/api/v1/policies/1/cancel"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
-    }
-
-    @Test
-    @WithMockUser(roles = "INFLUENCER")
-    void payPremium_ShouldActivatePolicy() throws Exception {
-        when(policyService.payPremium(anyLong())).thenReturn(new PolicyDetailResponse());
-
-        mockMvc.perform(post("/api/v1/policies/1/pay"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
-    }
-
-    @Test
-    @WithMockUser(roles = "POLICY_ADMIN")
-    void getAllPolicies_ShouldReturnAllPolicies() throws Exception {
-        when(policyService.getAllPolicies()).thenReturn(List.of(new PolicySummaryResponse()));
-
-        mockMvc.perform(get("/api/v1/policies/admin/all"))
+        mockMvc.perform(get("/api/v1/policies/applications/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }

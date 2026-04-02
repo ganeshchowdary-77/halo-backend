@@ -24,12 +24,14 @@ public interface PolicyMapper {
     @Mapping(source = "profile.id", target = "insuredProfileId") // UserPlatform ID
     @Mapping(source = "profile.handle", target = "insuredProfileHandle")
     @Mapping(source = "profile.platform.name", target = "insuredPlatform")
+    @Mapping(source = "user.fullName", target = "holderName")
+    @Mapping(source = "user.email", target = "holderEmail")
     @Mapping(source = "product.coveredLegal", target = "coverageLegal")
     @Mapping(source = "product.coverageLimitLegal", target = "limitLegal")
-    @Mapping(source = "product.coveredPR", target = "coveragePR")
-    @Mapping(source = "product.coverageLimitPR", target = "limitPR")
-    @Mapping(source = "product.coveredMonitoring", target = "coverageMonitoring")
-    @Mapping(source = "product.coverageLimitMonitoring", target = "limitMonitoring")
+    @Mapping(source = "product.coveredReputation", target = "coverageReputation")
+    @Mapping(source = "product.coverageLimitReputation", target = "limitReputation")
+    @Mapping(source = "product.coveredCyber", target = "coverageCyber")
+    @Mapping(source = "product.coverageLimitCyber", target = "limitCyber")
     @Mapping(source = "underwriter.fullName", target = "underwriterName")
     PolicyDetailResponse toDetailDto(Policy policy);
 

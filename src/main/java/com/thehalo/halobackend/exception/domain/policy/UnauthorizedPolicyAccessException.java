@@ -2,7 +2,6 @@ package com.thehalo.halobackend.exception.domain.policy;
 
 import com.thehalo.halobackend.exception.base.BaseException;
 import com.thehalo.halobackend.exception.codes.ErrorCode;
-import org.springframework.http.HttpStatus;
 
 public class UnauthorizedPolicyAccessException extends BaseException {
     public UnauthorizedPolicyAccessException(Long policyId, Long userId) {

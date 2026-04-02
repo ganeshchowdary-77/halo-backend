@@ -15,12 +15,13 @@ public class ProductResponse {
     private String name;
     private String description;
     private Boolean coveredLegal;
-    private Boolean coveredPR;
-    private Boolean coveredMonitoring;
+    private Boolean coveredReputation;
+    private Boolean coveredCyber;
 
     private BigDecimal coverageLimitLegal;
-    private BigDecimal coverageLimitPR;
-    private BigDecimal coverageLimitMonitoring;
+    private BigDecimal coverageLimitReputation;
+    private BigDecimal coverageLimitCyber;
+
 
     private BigDecimal basePremium;
     private Boolean active;

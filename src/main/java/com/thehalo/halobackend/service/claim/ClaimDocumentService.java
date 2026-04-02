@@ -2,7 +2,6 @@ package com.thehalo.halobackend.service.claim;
 
 import com.thehalo.halobackend.dto.claim.response.ClaimDocumentResponse;
 import com.thehalo.halobackend.enums.ClaimStatus;
-import com.thehalo.halobackend.exception.business.BusinessException;
 import com.thehalo.halobackend.exception.domain.claim.ClaimNotFoundException;
 import com.thehalo.halobackend.exception.domain.claim.ClaimNotModifiableException;
 import com.thehalo.halobackend.exception.domain.claim.DocumentNotFoundException;
@@ -22,10 +21,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -47,8 +43,9 @@ public class ClaimDocumentService {
             throw new ClaimNotModifiableException(claimId, "You can only upload documents to your own claims");
         }
 
-        // Only allow uploads for SUBMITTED or UNDER_REVIEW claims
-        if (claim.getStatus() != ClaimStatus.SUBMITTED && claim.getStatus() != ClaimStatus.UNDER_REVIEW) {
+        // Only allow uploads for SUBMITTED, UNDER_REVIEW, or PENDING_INFORMATION claims
+        if (claim.getStatus() != ClaimStatus.SUBMITTED && claim.getStatus() != ClaimStatus.UNDER_REVIEW
+                && claim.getStatus() != ClaimStatus.PENDING_INFORMATION) {
             throw new ClaimNotModifiableException(claimId, "Cannot upload documents to a " + claim.getStatus() + " claim");
         }
 

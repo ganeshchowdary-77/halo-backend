@@ -6,8 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -91,4 +89,14 @@ public interface ClaimRepository extends JpaRepository<Claim, Long> {
     // Count completed claims this week by officer
     @Query("SELECT COUNT(c) FROM Claim c WHERE c.assignedOfficer.id = :officerId AND c.status IN :completedStatuses AND c.updatedAt >= :startOfWeek")
     int countCompletedClaimsThisWeek(@Param("officerId") Long officerId, @Param("completedStatuses") List<ClaimStatus> completedStatuses, @Param("startOfWeek") LocalDateTime startOfWeek);
+
+    // Search claims by user's full name (first name or last name)
+    @Query("SELECT c FROM Claim c " +
+           "LEFT JOIN FETCH c.profile p " +
+           "LEFT JOIN FETCH p.platform " +
+           "LEFT JOIN FETCH c.policy pol " +
+           "WHERE LOWER(c.filedBy.firstName) LIKE LOWER(CONCAT('%', :name, '%')) OR " +
+           "LOWER(c.filedBy.lastName) LIKE LOWER(CONCAT('%', :name, '%')) OR " +
+           "LOWER(CONCAT(c.filedBy.firstName, ' ', c.filedBy.lastName)) LIKE LOWER(CONCAT('%', :name, '%'))")
+    List<Claim> findByUserName(@Param("name") String name);
 }

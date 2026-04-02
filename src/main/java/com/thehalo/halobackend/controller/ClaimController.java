@@ -141,6 +141,34 @@ public class ClaimController {
         return ResponseFactory.success(claimService.approve(id, request), "Claim approved");
     }
 
+    // Officer: request more documents
+    @PostMapping("/{id}/request-documents")
+    @PreAuthorize("hasRole('CLAIMS_OFFICER')")
+    @Operation(summary = "Request more documents", description = "Pauses claim review and requests additional documents from the influencer.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Documents requested"),
+            @ApiResponse(responseCode = "400", description = "Validation error"),
+            @ApiResponse(responseCode = "404", description = "Claim not found")
+    })
+    public ResponseEntity<HaloApiResponse<ClaimDetailResponse>> requestDocuments(
+            @PathVariable Long id, @Valid @RequestBody ReviewClaimRequest request) {
+        return ResponseFactory.success(claimService.requestDocuments(id, request), "Additional documents requested");
+    }
+
+    // Influencer: upload additional documents
+    @PostMapping(value = "/{id}/documents", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('INFLUENCER')")
+    @Operation(summary = "Append documents to claim", description = "Uploads additional evidence files to a PENDING_INFORMATION claim.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Documents added successfully"),
+            @ApiResponse(responseCode = "404", description = "Claim not found")
+    })
+    public ResponseEntity<HaloApiResponse<ClaimDetailResponse>> uploadDocuments(
+            @PathVariable Long id, 
+            @RequestPart("documents") List<org.springframework.web.multipart.MultipartFile> documents) {
+        return ResponseFactory.success(claimService.uploadAdditionalDocuments(id, documents), "Additional documents uploaded");
+    }
+
     // Officer: deny a claim with written justification
     @PostMapping("/{id}/deny")
     @PreAuthorize("hasRole('CLAIMS_OFFICER')")

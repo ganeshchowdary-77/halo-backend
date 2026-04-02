@@ -1,18 +1,12 @@
 package com.thehalo.halobackend.actuator;
 
-import com.thehalo.halobackend.enums.PolicyStatus;
-import com.thehalo.halobackend.enums.QuoteStatus;
 import com.thehalo.halobackend.repository.ClaimRepository;
-import com.thehalo.halobackend.repository.PolicyRepository;
-import com.thehalo.halobackend.repository.QuoteRequestRepository;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;
 import org.springframework.stereotype.Component;
 
-/**
- * Custom health indicator for business metrics
- */
-@Component  // Re-enabled with simpler implementation
+
+@Component
 public class BusinessHealthIndicator implements HealthIndicator {
     
     private final ClaimRepository claimRepository;

@@ -85,10 +85,10 @@ public class ProductServiceImpl implements ProductService {
         List<String> features = new ArrayList<>();
         if (Boolean.TRUE.equals(p.getCoveredLegal()) && p.getCoverageLimitLegal() != null)
             features.add("Legal defence up to $" + p.getCoverageLimitLegal().toPlainString());
-        if (Boolean.TRUE.equals(p.getCoveredPR()) && p.getCoverageLimitPR() != null)
-            features.add("PR crisis cover up to $" + p.getCoverageLimitPR().toPlainString());
-        if (Boolean.TRUE.equals(p.getCoveredMonitoring()) && p.getCoverageLimitMonitoring() != null)
-            features.add("Reputation monitoring up to $" + p.getCoverageLimitMonitoring().toPlainString());
+        if (Boolean.TRUE.equals(p.getCoveredReputation()) && p.getCoverageLimitReputation() != null)
+            features.add("Reputation monitoring up to $" + p.getCoverageLimitReputation().toPlainString());
+        if (Boolean.TRUE.equals(p.getCoveredCyber()) && p.getCoverageLimitCyber() != null)
+            features.add("Cyber security up to $" + p.getCoverageLimitCyber().toPlainString());
         return features;
     }
 

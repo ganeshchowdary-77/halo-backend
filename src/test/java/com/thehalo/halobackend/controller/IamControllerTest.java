@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.thehalo.halobackend.dto.auth.response.AuthResponse;
 import com.thehalo.halobackend.dto.iam.request.CreateStaffRequest;
 import com.thehalo.halobackend.dto.iam.request.UpdateStaffRequest;
-import com.thehalo.halobackend.dto.iam.response.SessionSummaryResponse;
 import com.thehalo.halobackend.dto.iam.response.StaffSummaryResponse;
 import com.thehalo.halobackend.enums.RoleName;
 import com.thehalo.halobackend.repository.RefreshTokenRepository;
@@ -29,9 +28,18 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.thehalo.halobackend.security.util.JwtUtil;
+import com.thehalo.halobackend.security.service.CustomUserDetailsService;
+
 @WebMvcTest(IamController.class)
 @AutoConfigureMockMvc(addFilters = false)
 class IamControllerTest {
+
+    @MockBean
+    private JwtUtil jwtUtil;
+
+    @MockBean
+    private CustomUserDetailsService customUserDetailsService;
 
     @Autowired
     private MockMvc mockMvc;

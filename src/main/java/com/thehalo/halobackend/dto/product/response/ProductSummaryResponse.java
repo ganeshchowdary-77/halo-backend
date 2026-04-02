@@ -22,6 +22,6 @@ public class ProductSummaryResponse {
         // Human-readable bullet points, e.g. "Legal cover up to $500k"
         private List<String> keyFeatures;
         private Boolean coverageLegal;
-        private Boolean coveragePR;
-        private Boolean coverageMonitoring;
+        private Boolean coverageReputation;
+        private Boolean coverageCyber;
 }

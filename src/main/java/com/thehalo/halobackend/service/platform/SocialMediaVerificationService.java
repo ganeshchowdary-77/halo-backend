@@ -1,7 +1,6 @@
 package com.thehalo.halobackend.service.platform;
 
 import com.thehalo.halobackend.enums.PlatformName;
-import com.thehalo.halobackend.enums.Niche;
 import lombok.Builder;
 import lombok.Data;
 import org.springframework.stereotype.Service;
@@ -311,37 +310,6 @@ public class SocialMediaVerificationService {
                 .displayName("Spoorthi")
                 .followerCount(41_000L).engagementRate(new BigDecimal("4.2"))
                 .profileUrl("https://snapchat.com/add/spoorthi.snap")
-                .build());
-
-        // ═══════════════════════════════════════════════════════════
-        // PODCAST PROFILES
-        // ═══════════════════════════════════════════════════════════
-        
-        // Sri Nayani - Lifestyle podcast
-        mockDatabase.add(MockAccount.builder()
-                .platform(PlatformName.PODCAST)
-                .handle("srinayani.podcast")
-                .displayName("Sri Nayani")
-                .followerCount(23_000L).engagementRate(new BigDecimal("6.2"))
-                .profileUrl("https://podcasts.apple.com/srinayani.podcast")
-                .build());
-        
-        // Nanda Kishor - Tech talks
-        mockDatabase.add(MockAccount.builder()
-                .platform(PlatformName.PODCAST)
-                .handle("nandakishor.talks")
-                .displayName("Nanda Kishor")
-                .followerCount(18_000L).engagementRate(new BigDecimal("5.5"))
-                .profileUrl("https://podcasts.apple.com/nandakishor.talks")
-                .build());
-        
-        // Spoorthi - Fashion & style podcast
-        mockDatabase.add(MockAccount.builder()
-                .platform(PlatformName.PODCAST)
-                .handle("spoorthi.podcast")
-                .displayName("Spoorthi")
-                .followerCount(12_000L).engagementRate(new BigDecimal("4.1"))
-                .profileUrl("https://podcasts.apple.com/spoorthi.podcast")
                 .build());
     }
 

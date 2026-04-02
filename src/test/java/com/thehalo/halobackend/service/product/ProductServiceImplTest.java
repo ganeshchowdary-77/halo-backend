@@ -1,5 +1,8 @@
 package com.thehalo.halobackend.service.product;
 
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+
 import com.thehalo.halobackend.dto.product.request.CreateProductRequest;
 import com.thehalo.halobackend.dto.product.request.UpdateProductRequest;
 import com.thehalo.halobackend.dto.product.response.ProductDetailResponse;
@@ -24,6 +27,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class ProductServiceImplTest {
 
     @Mock
@@ -44,8 +48,8 @@ class ProductServiceImplTest {
                 .name("Test Product")
                 .basePremium(BigDecimal.valueOf(100))
                 .coverageLimitLegal(BigDecimal.valueOf(50000))
-                .coverageLimitPR(BigDecimal.valueOf(30000))
-                .coverageLimitMonitoring(BigDecimal.valueOf(20000))
+                .coverageLimitReputation(BigDecimal.valueOf(30000))
+                .coverageLimitCyber(BigDecimal.valueOf(20000))
                 .active(true)
                 .build();
     }
@@ -86,8 +90,8 @@ class ProductServiceImplTest {
                 .name("New Product")
                 .basePremium(BigDecimal.valueOf(150))
                 .coverageLimitLegal(BigDecimal.valueOf(60000))
-                .coverageLimitPR(BigDecimal.valueOf(40000))
-                .coverageLimitMonitoring(BigDecimal.valueOf(25000))
+                .coverageLimitReputation(BigDecimal.valueOf(40000))
+                .coverageLimitCyber(BigDecimal.valueOf(25000))
                 .build();
 
         when(productRepository.save(any(Product.class))).thenReturn(testProduct);

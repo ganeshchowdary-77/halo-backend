@@ -29,4 +29,7 @@ public class ClaimSummaryResponse {
         private String policyNumber;
         // Which social profile was affected
         private String profileHandle;
+        // User who filed the claim (for Claims Officer tools)
+        private Long filedById;
+        private String filedByEmail;
 }

@@ -2,7 +2,6 @@ package com.thehalo.halobackend.service.dashboard;
 
 import com.thehalo.halobackend.enums.PolicyStatus;
 import com.thehalo.halobackend.model.policy.Policy;
-import com.thehalo.halobackend.repository.ClaimRepository;
 import com.thehalo.halobackend.repository.PolicyRepository;
 import com.thehalo.halobackend.security.service.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +21,6 @@ import java.util.stream.Collectors;
 public class InfluencerDashboardServiceImpl implements InfluencerDashboardService {
 
     private final PolicyRepository policyRepository;
-    private final ClaimRepository claimRepository;
 
     @Override
     public Map<String, Object> getDashboardOverview() {
@@ -116,7 +114,7 @@ public class InfluencerDashboardServiceImpl implements InfluencerDashboardServic
         due.put("daysUntilDue", daysUntilDue);
         due.put("isPayable", isPayable);
         due.put("isOverdue", isOverdue);
-        due.put("billingCycle", policy.getBillingCycle().name());
+        due.put("billingCycle", "MONTHLY");
         
         return due;
     }

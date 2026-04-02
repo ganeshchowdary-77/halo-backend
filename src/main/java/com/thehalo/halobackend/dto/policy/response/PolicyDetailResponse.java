@@ -29,6 +29,10 @@ public class PolicyDetailResponse {
         private String insuredProfileHandle;
         private String insuredPlatform;
 
+        // Policy holder info
+        private String holderName;
+        private String holderEmail;
+
         // Coverage financials
         private BigDecimal totalCoverageLimit;
         private BigDecimal premiumAmount;
@@ -36,10 +40,10 @@ public class PolicyDetailResponse {
         // Per-coverage detail
         private Boolean coverageLegal;
         private BigDecimal limitLegal;
-        private Boolean coveragePR;
-        private BigDecimal limitPR;
-        private Boolean coverageMonitoring;
-        private BigDecimal limitMonitoring;
+        private Boolean coverageReputation;
+        private BigDecimal limitReputation;
+        private Boolean coverageCyber;
+        private BigDecimal limitCyber;
 
         // Risk and lifecycle info
         private Integer riskScore;

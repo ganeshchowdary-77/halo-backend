@@ -17,23 +17,23 @@ public class CreateProductRequest {
 
     private String description;
 
-    @NotNull
+    @NotNull(message = "coveredLegal is required")
     private Boolean coveredLegal;
 
-    @NotNull
-    private Boolean coveredPR;
+    @NotNull(message = "coveredReputation is required")
+    private Boolean coveredReputation;
 
-    @NotNull
-    private Boolean coveredMonitoring;
+    @NotNull(message = "coveredCyber is required")
+    private Boolean coveredCyber;
 
-    @DecimalMin(value = "0.0", inclusive = true)
+    @DecimalMin(value = "0.0", inclusive = true, message = "coverageLimitLegal must be non-negative")
     private BigDecimal coverageLimitLegal;
 
-    @DecimalMin(value = "0.0", inclusive = true)
-    private BigDecimal coverageLimitPR;
+    @DecimalMin(value = "0.0", inclusive = true, message = "coverageLimitReputation must be non-negative")
+    private BigDecimal coverageLimitReputation;
 
-    @DecimalMin(value = "0.0", inclusive = true)
-    private BigDecimal coverageLimitMonitoring;
+    @DecimalMin(value = "0.0", inclusive = true, message = "coverageLimitCyber must be non-negative")
+    private BigDecimal coverageLimitCyber;
 
     @NotNull
     @DecimalMin(value = "0.0", inclusive = false)

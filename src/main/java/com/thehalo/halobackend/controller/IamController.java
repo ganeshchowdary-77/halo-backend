@@ -112,7 +112,7 @@ public class IamController {
 
     @PostMapping("/verification/{profileId}/verify")
     @PreAuthorize("hasRole('IAM_ADMIN')")
-    @Operation(summary = "Verify influencer profile", description = "Verifies an influencer profile, allowing them to request quotes. Requires IAM_ADMIN role.")
+    @Operation(summary = "Verify influencer profile", description = "Verifies an influencer profile, allowing them to apply for policies. Requires IAM_ADMIN role.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Profile verified successfully"),
             @ApiResponse(responseCode = "404", description = "Profile not found")

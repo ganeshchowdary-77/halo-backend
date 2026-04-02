@@ -25,10 +25,10 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
     List<AppUser> findByRoleName(RoleName roleName);
 
     // Find active underwriters ordered by workload (least busy first)
-    @Query("SELECT u FROM AppUser u LEFT JOIN QuoteRequest q ON q.assignedUnderwriter.id = u.id AND q.status IN ('PENDING', 'IN_REVIEW') WHERE u.role.name = 'UNDERWRITER' GROUP BY u.id ORDER BY COUNT(q.id) ASC")
+    @Query("SELECT u FROM AppUser u LEFT JOIN PolicyApplication a ON a.assignedUnderwriter.id = u.id AND a.status = 'UNDER_REVIEW' WHERE u.role.name = 'UNDERWRITER' GROUP BY u.id ORDER BY COUNT(a.id) ASC")
     List<AppUser> findActiveUnderwritersOrderByWorkload();
 
     // Find underwriters with experience in specific platform
-    @Query("SELECT DISTINCT u FROM AppUser u JOIN QuoteRequest q ON q.assignedUnderwriter.id = u.id JOIN q.profile p WHERE u.role.name = 'UNDERWRITER' AND p.platform.name = :platform")
+    @Query("SELECT DISTINCT u FROM AppUser u JOIN PolicyApplication a ON a.assignedUnderwriter.id = u.id JOIN a.profile p WHERE u.role.name = 'UNDERWRITER' AND p.platform.name = :platform")
     List<AppUser> findUnderwritersByPlatformExperience(@Param("platform") String platform);
 }

@@ -18,8 +18,11 @@ public class PublicProductResponse {
     private BigDecimal basePremium;
     private BigDecimal coverageAmount;
     private Boolean coveredLegal;
-    private Boolean coveredPR;
-    private Boolean coveredMonitoring;
+    private Boolean coveredReputation;
+    private Boolean coveredCyber;
+    private BigDecimal coverageLimitLegal;
+    private BigDecimal coverageLimitReputation;
+    private BigDecimal coverageLimitCyber;
     private List<String> features;
     private boolean popular;
     private String marketingMessage;

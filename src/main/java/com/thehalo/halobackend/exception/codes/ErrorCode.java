@@ -56,10 +56,15 @@ public enum ErrorCode {
     INVALID_REFRESH_TOKEN(401),
     RATE_LIMIT_EXCEEDED(429),
 
+    // ── AI Domain ──────────────────────────────────────────────────
+    AI_SERVICE_UNAVAILABLE(503),
+    AI_QUOTA_EXCEEDED(429),
+
     // ── System ─────────────────────────────────────────────────────
     DATABASE_ERROR(500),
     EXTERNAL_SERVICE_ERROR(503),
     FILE_STORAGE_ERROR(500),
+    FILE_NOT_FOUND(404),
     INVALID_FILE_NAME(400),
     INTERNAL_SERVER_ERROR(500);
 

@@ -5,7 +5,7 @@ import com.thehalo.halobackend.dto.payment.request.AddPaymentMethodRequest;
 import com.thehalo.halobackend.dto.payment.request.ProcessPaymentRequest;
 import com.thehalo.halobackend.dto.payment.response.PaymentMethodResponse;
 import com.thehalo.halobackend.dto.payment.response.PaymentSummaryResponse;
-import com.thehalo.halobackend.dto.payment.response.SurrenderQuoteResponse;
+import com.thehalo.halobackend.dto.payment.response.SurrenderValueResponse;
 import com.thehalo.halobackend.dto.payment.response.TransactionResponse;
 import com.thehalo.halobackend.service.payment.PaymentService;
 import org.junit.jupiter.api.Test;
@@ -27,9 +27,18 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.thehalo.halobackend.security.util.JwtUtil;
+import com.thehalo.halobackend.security.service.CustomUserDetailsService;
+
 @WebMvcTest(PaymentController.class)
 @AutoConfigureMockMvc(addFilters = false)
 class PaymentControllerTest {
+
+    @MockBean
+    private JwtUtil jwtUtil;
+
+    @MockBean
+    private CustomUserDetailsService customUserDetailsService;
 
     @Autowired
     private MockMvc mockMvc;
@@ -109,10 +118,10 @@ class PaymentControllerTest {
 
     @Test
     @WithMockUser(roles = "INFLUENCER")
-    void getSurrenderQuote_ShouldReturnQuote() throws Exception {
-        when(paymentService.getSurrenderQuote(anyLong())).thenReturn(new SurrenderQuoteResponse());
+    void getSurrenderValue_ShouldReturnResponse() throws Exception {
+        when(paymentService.getSurrenderValue(anyLong())).thenReturn(new SurrenderValueResponse());
 
-        mockMvc.perform(get("/api/v1/payments/policies/1/surrender-quote"))
+        mockMvc.perform(get("/api/v1/payments/policy/1/surrender-value"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }

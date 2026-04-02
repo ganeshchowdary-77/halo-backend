@@ -30,10 +30,10 @@ public final class IdGeneratorUtil {
     }
 
     /**
-     * Generates a unique Quote Request Number (e.g., QTE-2024-1X2Y)
+     * Generates a unique Policy Application Number (e.g., APP-2024-1X2Y)
      */
-    public static String generateQuoteNumber() {
-        return "QTE-" + Year.now().getValue() + "-" + generateShortCode();
+    public static String generateApplicationNumber() {
+        return "APP-" + Year.now().getValue() + "-" + generateShortCode();
     }
 
     /**

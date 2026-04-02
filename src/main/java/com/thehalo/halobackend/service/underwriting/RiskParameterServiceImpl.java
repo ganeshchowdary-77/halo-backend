@@ -46,7 +46,7 @@ public class RiskParameterServiceImpl implements RiskParameterService {
         parameter.setMultiplier(request.getMultiplier());
         parameter.setDescription(request.getDescription());
         parameter.setActive(true);
-        parameter.setLastModifiedBy(createdByEmail);
+        parameter.setLastModifiedBy(createdByUser.getEmail());
         parameter.setLastModifiedDate(LocalDateTime.now());
         parameter.setUpdateNote(request.getUpdateNote());
 

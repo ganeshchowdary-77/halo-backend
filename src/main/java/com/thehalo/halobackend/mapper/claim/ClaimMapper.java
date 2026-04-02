@@ -13,6 +13,8 @@ public interface ClaimMapper {
 
     @Mapping(source = "policy.policyNumber", target = "policyNumber")
     @Mapping(source = "profile.handle", target = "profileHandle")
+    @Mapping(source = "filedBy.id", target = "filedById")
+    @Mapping(source = "filedBy.email", target = "filedByEmail")
     @Mapping(target = "filedAt", expression = "java(c.getCreatedAt() != null ? c.getCreatedAt().toString() : null)")
     ClaimSummaryResponse toSummaryDto(Claim c);
 
@@ -32,6 +34,8 @@ public interface ClaimMapper {
     @Mapping(source = "policy.product.name", target = "productName")
     @Mapping(source = "policy.totalCoverageLimit", target = "policyTotalCoverageLimit")
     @Mapping(source = "profile.handle", target = "profileHandle")
+    @Mapping(source = "filedBy.id", target = "filedById")
+    @Mapping(source = "filedBy.email", target = "filedByEmail")
     @Mapping(target = "profilePlatform", expression = "java(getPlatformName(c.getProfile()))")
     @Mapping(target = "assignedOfficerName", expression = "java(c.getAssignedOfficer() != null ? c.getAssignedOfficer().getFullName() : null)")
     @Mapping(target = "documents", ignore = true)
@@ -55,15 +59,6 @@ public interface ClaimMapper {
 
     @org.mapstruct.Named("filePathToUrl")
     default String filePathToUrl(String filePath) {
-        if (filePath == null || filePath.isEmpty()) return null;
-        // File paths are stored as "claims/5/uuid.pdf" or "uploads/claims/5/uuid.pdf"
-        // Ensure we don't double-add "uploads/"
-        if (filePath.startsWith("uploads/")) {
-            return "http://localhost:8080/" + filePath;
-        } else if (filePath.startsWith("claims/")) {
-            return "http://localhost:8080/" + filePath;
-        } else {
-            return "http://localhost:8080/uploads/" + filePath;
-        }
+        return filePath;
     }
 }

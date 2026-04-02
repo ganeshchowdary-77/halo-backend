@@ -1,9 +1,12 @@
 package com.thehalo.halobackend.controller;
 
+import com.thehalo.halobackend.dto.ai.request.MultiplierSuggestRequest;
+import com.thehalo.halobackend.dto.ai.response.MultiplierSuggestionResponse;
 import com.thehalo.halobackend.dto.common.ResponseFactory;
 import com.thehalo.halobackend.dto.risk.request.CreateRiskParameterRequest;
 import com.thehalo.halobackend.dto.risk.request.UpdateRiskParameterRequest;
 import com.thehalo.halobackend.dto.risk.response.RiskParameterResponse;
+import com.thehalo.halobackend.ai.AiRiskService;
 import com.thehalo.halobackend.service.underwriting.RiskParameterService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -25,6 +28,7 @@ import org.springframework.web.bind.annotation.*;
 public class RiskParameterController {
 
     private final RiskParameterService riskParameterService;
+    private final AiRiskService aiRiskService;
 
     @PostMapping
     @Operation(summary = "Create new risk parameter", description = "Create a new risk parameter with audit trail")
@@ -69,5 +73,14 @@ public class RiskParameterController {
         RiskParameterResponse updatedParameter = riskParameterService.updateParameter(id, request, updatedByEmail);
         
         return ResponseFactory.success(updatedParameter, "Risk parameter updated successfully");
+    }
+
+    @PostMapping("/ai-suggest")
+    @Operation(summary = "Get AI multiplier suggestion", description = "Uses AI to suggest an optimal multiplier value for a risk parameter")
+    @PreAuthorize("hasRole('UNDERWRITER')")
+    public ResponseEntity<?> getAiSuggestion(@RequestBody MultiplierSuggestRequest request) {
+        MultiplierSuggestionResponse suggestion = aiRiskService.suggestMultiplier(
+                request.getParamKey(), request.getDescription());
+        return ResponseFactory.success(suggestion, "AI suggestion generated successfully");
     }
 }

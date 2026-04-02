@@ -188,8 +188,6 @@ public class PlatformVerificationService {
             case YOUTUBE -> riskScore += 15;
             case FACEBOOK -> riskScore += 12;
             case SNAPCHAT -> riskScore += 20;
-            case PODCAST -> riskScore += 10;
-            case OTHERS -> riskScore += 35;
         }
         
         // Follower count risk (very high = higher risk due to visibility)

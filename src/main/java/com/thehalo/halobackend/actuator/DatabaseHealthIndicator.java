@@ -9,9 +9,6 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
-/**
- * Custom health indicator for database connectivity
- */
 @Component
 public class DatabaseHealthIndicator implements HealthIndicator {
     

@@ -4,9 +4,9 @@ import com.thehalo.halobackend.dto.payment.request.AddPaymentMethodRequest;
 import com.thehalo.halobackend.dto.payment.request.ProcessPaymentRequest;
 import com.thehalo.halobackend.dto.payment.response.PaymentMethodResponse;
 import com.thehalo.halobackend.dto.payment.response.PaymentSummaryResponse;
-import com.thehalo.halobackend.dto.payment.response.SurrenderQuoteResponse;
+import com.thehalo.halobackend.dto.payment.response.SurrenderValueResponse;
 import com.thehalo.halobackend.dto.payment.response.TransactionResponse;
-import com.thehalo.halobackend.enums.BillingCycle;
+
 import com.thehalo.halobackend.enums.PolicyStatus;
 import com.thehalo.halobackend.enums.TransactionStatus;
 import com.thehalo.halobackend.enums.TransactionType;
@@ -21,6 +21,7 @@ import com.thehalo.halobackend.model.payment.Transaction;
 import com.thehalo.halobackend.model.policy.Policy;
 import com.thehalo.halobackend.model.user.AppUser;
 import com.thehalo.halobackend.repository.PaymentMethodRepository;
+import com.thehalo.halobackend.repository.PolicyApplicationRepository;
 import com.thehalo.halobackend.repository.PolicyRepository;
 import com.thehalo.halobackend.repository.TransactionRepository;
 import com.thehalo.halobackend.security.service.CustomUserDetails;
@@ -44,6 +45,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentMethodRepository paymentMethodRepository;
     private final TransactionRepository transactionRepository;
     private final PolicyRepository policyRepository;
+    private final PolicyApplicationRepository applicationRepository;
     private final PaymentMapper paymentMapper;
     private final MockPaymentGateway mockPaymentGateway;
 
@@ -97,6 +99,19 @@ public class PaymentServiceImpl implements PaymentService {
         Policy policy = findPolicyOrThrow(policyId);
         verifyOwnership(policy);
 
+        if (policy.getStatus() == PolicyStatus.ACTIVE && policy.getNextPaymentDueDate() != null 
+            && !policy.getNextPaymentDueDate().isBefore(LocalDate.now())) {
+            return PaymentSummaryResponse.builder()
+                    .policyId(policy.getId())
+                    .policyNumber(policy.getPolicyNumber())
+                    .basePremiumDue(BigDecimal.ZERO)
+                    .lateFeesDue(BigDecimal.ZERO)
+                    .totalAmountDue(BigDecimal.ZERO)
+                    .daysOverdue(0)
+                    .nextPaymentDueDate(policy.getNextPaymentDueDate())
+                    .build();
+        }
+
         BigDecimal basePremium = policy.getPremiumAmount();
         BigDecimal lateFees = calculateLateFees(policy);
 
@@ -133,6 +148,9 @@ public class PaymentServiceImpl implements PaymentService {
         verifyOwnership(pm);
 
         PaymentSummaryResponse summary = getPaymentSummary(policyId);
+        if (summary.getTotalAmountDue().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new InvalidPaymentStateException("No premium is currently due for this policy.");
+        }
         if (request.getAmount().compareTo(summary.getTotalAmountDue()) < 0) {
             throw new InsufficientPaymentException(summary.getTotalAmountDue(), request.getAmount());
         }
@@ -163,17 +181,32 @@ public class PaymentServiceImpl implements PaymentService {
         // Update ledger fields on policy
         policy.setTotalPremiumPaid(policy.getTotalPremiumPaid().add(request.getAmount()));
 
+        boolean wasFirstPayment = false;
         if (policy.getStatus() == PolicyStatus.PENDING_PAYMENT) {
+            wasFirstPayment = true;
             policy.setStatus(PolicyStatus.ACTIVE);
             policy.setStartDate(LocalDate.now());
-            // Compute maturity based on default 12 month term
-            policy.setMaturityDate(LocalDate.now().plusMonths(12));
-            policy.setNextPaymentDueDate(computeNextDueDate(LocalDate.now(), policy.getBillingCycle()));
+            policy.setEndDate(LocalDate.now().plusMonths(1));
+            policy.setNextPaymentDueDate(LocalDate.now().plusMonths(1));
         } else {
-            policy.setNextPaymentDueDate(computeNextDueDate(policy.getNextPaymentDueDate(), policy.getBillingCycle()));
+            // Monthly renewal — extend by 1 month from current due date
+            LocalDate nextDue = policy.getNextPaymentDueDate() != null
+                    ? policy.getNextPaymentDueDate().plusMonths(1)
+                    : LocalDate.now().plusMonths(1);
+            policy.setNextPaymentDueDate(nextDue);
+            policy.setEndDate(nextDue);
+            policy.setRenewalCount(policy.getRenewalCount() + 1);
         }
 
         policyRepository.save(policy);
+
+        // Update the corresponding PolicyApplication status to ACTIVE (if this was first payment)
+        if (wasFirstPayment) {
+            applicationRepository.findByPolicyId(policyId).ifPresent(application -> {
+                application.setStatus(PolicyStatus.ACTIVE);
+                applicationRepository.save(application);
+            });
+        }
 
         return paymentMapper.toDto(savedTx);
     }
@@ -193,7 +226,8 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    public SurrenderQuoteResponse getSurrenderQuote(Long policyId) {
+    @Transactional(readOnly = true)
+    public SurrenderValueResponse getSurrenderValue(Long policyId) {
         Policy policy = findPolicyOrThrow(policyId);
         verifyOwnership(policy);
 
@@ -206,7 +240,7 @@ public class PaymentServiceImpl implements PaymentService {
         BigDecimal surrenderValue = totalPaid.multiply(surrenderValueMultiplier).setScale(2,
                 RoundingMode.HALF_UP);
 
-        return SurrenderQuoteResponse.builder()
+        return SurrenderValueResponse.builder()
                 .policyId(policy.getId())
                 .policyNumber(policy.getPolicyNumber())
                 .totalPremiumPaid(totalPaid)
@@ -227,11 +261,11 @@ public class PaymentServiceImpl implements PaymentService {
             throw new InvalidPaymentStateException("Only active policies can be surrendered");
         }
 
-        SurrenderQuoteResponse quote = getSurrenderQuote(policyId);
+        SurrenderValueResponse surrenderResponse = getSurrenderValue(policyId);
 
         Transaction tx = Transaction.builder()
                 .policy(policy)
-                .amount(quote.getEarlySurrenderValue())
+                .amount(surrenderResponse.getEarlySurrenderValue())
                 .transactionType(TransactionType.SURRENDER_PAYOUT)
                 .status(TransactionStatus.COMPLETED)
                 .referenceNumber("PAYOUT-" + UUID.randomUUID().toString().substring(0, 8))
@@ -261,13 +295,7 @@ public class PaymentServiceImpl implements PaymentService {
         return policy.getPremiumAmount().multiply(penaltyPercentage).setScale(2, RoundingMode.HALF_UP);
     }
 
-    private LocalDate computeNextDueDate(LocalDate fromDate, BillingCycle cycle) {
-        if (cycle == BillingCycle.MONTHLY) {
-            return fromDate.plusMonths(1);
-        } else {
-            return fromDate.plusYears(1);
-        }
-    }
+
 
     private Long currentUserId() {
         return ((CustomUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getUserId();

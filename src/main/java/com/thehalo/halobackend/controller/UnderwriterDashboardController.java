@@ -22,13 +22,13 @@ public class UnderwriterDashboardController {
     private final UnderwriterDashboardService dashboardService;
 
     @GetMapping("/overview")
-    @Operation(summary = "Get underwriter dashboard overview", description = "Returns statistics on quotes and policies")
+    @Operation(summary = "Get underwriter dashboard overview", description = "Returns statistics on applications and policies")
     public ResponseEntity<HaloApiResponse<Map<String, Object>>> getOverview() {
         return ResponseFactory.success(dashboardService.getOverview(), "Dashboard overview retrieved");
     }
 
     @GetMapping("/premium-calculations")
-    @Operation(summary = "Get all premium calculations", description = "Returns all quotes with premium calculation details")
+    @Operation(summary = "Get all premium calculations", description = "Returns all applications with premium calculation details")
     public ResponseEntity<HaloApiResponse<Map<String, Object>>> getPremiumCalculations(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -38,11 +38,11 @@ public class UnderwriterDashboardController {
         );
     }
 
-    @GetMapping("/premium-calculations/{quoteId}")
-    @Operation(summary = "Get detailed premium calculation", description = "Returns detailed breakdown of premium calculation for a specific quote")
-    public ResponseEntity<HaloApiResponse<Map<String, Object>>> getPremiumCalculationDetail(@PathVariable Long quoteId) {
+    @GetMapping("/premium-calculations/{applicationId}")
+    @Operation(summary = "Get detailed premium calculation", description = "Returns detailed breakdown of premium calculation for a specific application")
+    public ResponseEntity<HaloApiResponse<Map<String, Object>>> getPremiumCalculationDetail(@PathVariable Long applicationId) {
         return ResponseFactory.success(
-            dashboardService.getPremiumCalculationDetail(quoteId), 
+            dashboardService.getPremiumCalculationDetail(applicationId), 
             "Premium calculation detail retrieved"
         );
     }
