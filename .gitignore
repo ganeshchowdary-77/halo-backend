@@ -30,3 +30,14 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### app properties ###
+*.properties
+*.yml
+*.yaml
+!**/src/main/**/application.properties
+!**/src/main/**/application.yml
+!**/src/main/**/application.yaml
+!**/src/test/**/application.properties
+!**/src/test/**/application.yml
+!**/src/test/**/application.yaml
